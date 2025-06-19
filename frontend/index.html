@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reserva en Rizoma</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: #f9f9f9;
+        color: #333;
+        padding: 20px;
+        max-width: 600px;
+        margin: auto;
+      }
+
+      h1,
+      h2 {
+        color: #222;
+        text-align: center;
+      }
+
+      form,
+      .filtro,
+      table {
+        background: #fff;
+        padding: 16px;
+        border-radius: 12px;
+        margin-top: 20px;
+        box-shadow: 0 0 12px rgba(0, 0, 0, 0.05);
+      }
+
+      input,
+      textarea,
+      button {
+        width: 100%;
+        padding: 10px 12px;
+        margin-bottom: 14px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1rem;
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: #4e54c8;
+        outline: none;
+      }
+
+      button {
+        background: #4e54c8;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      button:hover {
+        background: #3c40a8;
+      }
+
+      #respuesta {
+        text-align: center;
+        font-weight: bold;
+        margin-top: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 14px;
+      }
+
+      th,
+      td {
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+      }
+
+      th {
+        background: #f0f0f0;
+      }
+
+      @media screen and (max-width: 600px) {
+        body {
+          padding: 10px;
+        }
+
+        table,
+        thead,
+        tbody,
+        th,
+        td,
+        tr {
+          display: block;
+        }
+
+        th {
+          display: none;
+        }
+
+        td {
+          padding: 10px;
+          border: none;
+          position: relative;
+          padding-left: 50%;
+        }
+
+        td::before {
+          content: attr(data-label);
+          position: absolute;
+          left: 10px;
+          font-weight: bold;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hacé tu reserva</h1>
+
+    <form id="formReserva">
+      <input type="text" name="nombre" placeholder="Tu nombre" required />
+      <input type="tel" name="telefono" placeholder="Teléfono" required />
+      <input
+        type="number"
+        name="cantidadPersonas"
+        placeholder="Cantidad de personas"
+        required
+        min="1"
+      />
+      <input type="date" name="fecha" required />
+      <input type="time" name="hora" required />
+      <textarea
+        name="comentario"
+        placeholder="Comentario (opcional)"
+      ></textarea>
+      <button type="submit">Reservar</button>
+    </form>
+
+    <p id="respuesta"></p>
+
+    <hr />
+
+    <h2>Reservas registradas</h2>
+
+    <label for="filtroFecha">Filtrar por fecha:</label>
+    <input type="date" id="filtroFecha" />
+    <button onclick="cargarReservas()">Buscar</button>
+
+    <table id="tablaReservas">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Teléfono</th>
+          <th>Personas</th>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Comentario</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <script>
+      const form = document.getElementById("formReserva");
+      const mensaje = document.getElementById("respuesta");
+      const tablaBody = document.querySelector("#tablaReservas tbody");
+      const filtroFecha = document.getElementById("filtroFecha");
+
+      // Enviar reserva
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const datos = {
+          nombre: form.nombre.value.trim(),
+          telefono: form.telefono.value.trim(),
+          cantidadPersonas: parseInt(form.cantidadPersonas.value),
+          fecha: form.fecha.value,
+          hora: form.hora.value,
+          comentario: form.comentario.value.trim(),
+        };
+
+        try {
+          const res = await fetch("http://localhost:5000/api/reservas", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(datos),
+          });
+
+          const result = await res.json();
+
+          if (res.ok) {
+            mensaje.textContent = result.mensaje;
+            mensaje.style.color = "green";
+            form.reset();
+            cargarReservas(); // 🔁 Actualizar lista
+          } else {
+            mensaje.textContent = result.error || "Error al guardar la reserva";
+            mensaje.style.color = "red";
+          }
+        } catch {
+          mensaje.textContent = "Error de conexión con el servidor.";
+          mensaje.style.color = "red";
+        }
+      });
+
+      // Mostrar reservas
+      async function cargarReservas() {
+        let url = "http://localhost:5000/api/reservas";
+        const fecha = filtroFecha.value;
+
+        if (fecha) {
+          url += `?fecha=${fecha}`;
+        }
+
+        try {
+          const res = await fetch(url);
+          const reservas = await res.json();
+
+          tablaBody.innerHTML = "";
+          reservas.forEach((r) => {
+            const fila = `
+        <tr>
+          <td data-label="Nombre">${r.nombre}</td>
+          <td data-label="Teléfono">${r.telefono}</td>
+          <td data-label="Personas">${r.cantidadPersonas}</td>
+          <td data-label="Fecha">${r.fecha.split("T")[0]}</td>
+          <td data-label="Hora">${r.hora}</td>
+          <td data-label="Comentario">${r.comentario || ""}</td>
+        </tr>`;
+            tablaBody.innerHTML += fila;
+          });
+        } catch (err) {
+          tablaBody.innerHTML = `<tr><td colspan="6">Error al cargar reservas</td></tr>`;
+        }
+      }
+      // Cargar al inicio
+      cargarReservas();
+    </script>
+  </body>
+</html>
