@@ -10,13 +10,13 @@ const register = async (req, res) => {
 
     // Verifica si ya existe
     const existingUser = await User.findOne({ email });
-    if (existingUser)
+    if (existingUser) {
       return res.status(400).json({ message: "El usuario ya existe" });
+    }
 
     // Encripta la contraseña
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
     // Guarda el usuario
     const user = new User({ name, email, password: hashedPassword });
     await user.save();
@@ -33,9 +33,9 @@ const register = async (req, res) => {
       expiresIn: "7d",
     });
 
-    res.status(201).json({ message: "Usuario creado", token });
-  } catch (err) {
-    console.error("Error al registrar:", err.message);
+    res.status(201).json({ message: "Usuario registrado con éxito" });
+  } catch (error) {
+    console.error("Error en el registro:", error);
     res.status(500).json({ error: "Error del servidor" });
   }
 };
