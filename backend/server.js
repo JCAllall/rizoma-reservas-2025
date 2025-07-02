@@ -1,8 +1,9 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, ".env") }); // ✅ usa ruta absoluta
+
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config();
 
 const app = express();
 app.use(cors()); // <- habilita acceso desde el frontend
@@ -12,7 +13,10 @@ app.use(express.json());
 const reservasRouter = require("./routes/reservationRoutes");
 
 // ✅ montá la ruta
-app.use("/api/reservas", reservasRouter);
+const authRoutes = require("./routes/auth");
+app.use("/api/auth", authRoutes);
+
+console.log("MONGO_URI:", process.env.MONGO_URI);
 
 // 🔌 Conexión a MongoDB
 mongoose
