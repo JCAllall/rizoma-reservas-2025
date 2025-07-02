@@ -186,11 +186,14 @@
         };
 
         try {
-          const res = await fetch("http://localhost:5000/api/reservas", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(datos),
-          });
+          const res = await fetch(
+            "https://rizoma-backend.onrender.com/api/...",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(datos),
+            }
+          );
 
           const result = await res.json();
 
@@ -211,7 +214,7 @@
 
       // Mostrar reservas
       async function cargarReservas() {
-        let url = "http://localhost:5000/api/reservas";
+        let url = "https://rizoma-backend.onrender.com/api/...";
         const fecha = filtroFecha.value;
 
         if (fecha) {
