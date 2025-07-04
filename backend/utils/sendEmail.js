@@ -23,5 +23,10 @@ const sendEmail = async (to, subject, text) => {
     console.error("❌ Error al enviar el email:", error.message);
   }
 };
-
+module.exports = async (to, subject, message) => {
+  console.log(
+    `📧 Enviando mail a ${to} con asunto "${subject}" y mensaje: ${message}`
+  );
+  // En producción, usar nodemailer u otro servicio real
+};
 module.exports = sendEmail;

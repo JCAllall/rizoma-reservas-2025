@@ -1,39 +1,37 @@
 const express = require("express");
 const router = express.Router();
-const Reserva = require("../../models/Reserva");
 
-router.post("/", async (req, res) => {
-  try {
-    const nuevaReserva = new Reserva(req.body);
-    await nuevaReserva.save();
-    res.status(201).json({ mensaje: "Reserva guardada correctamente" });
-  } catch (error) {
-    console.error("Error al guardar reserva:", error);
-    res.status(500).json({ error: "Error del servidor" });
-  }
-});
-router.get("/", async (req, res) => {
-  try {
-    const { fecha } = req.query;
+const {
+  crearReserva,
+  obtenerHorariosOcupados,
+  getCapacidadPorSector,
+  guardarEnListaEspera,
+  verificarDisponibilidadInteligente,
+  verificarCapacidadSector,
+  obtenerCapacidadHorariaYDiaria,
+  exportarReservasPDF,
+  obtenerListaEspera,
+  obtenerResumenPorRango,
+  obtenerReservasPorFecha,
+  eliminarReserva, // 👈 Agregamos esto
+} = require("../controllers/reservationController");
 
-    let filtro = {};
+// Rutas principales
+router.post("/", crearReserva);
+router.get("/horarios-ocupados", obtenerHorariosOcupados);
+router.get("/capacidad", getCapacidadPorSector);
+router.post("/lista-espera", guardarEnListaEspera);
+router.get("/disponibilidad", verificarDisponibilidadInteligente);
+router.get("/verificar-capacidad", verificarCapacidadSector);
+router.get("/capacidad-horaria", obtenerCapacidadHorariaYDiaria);
+router.get("/", obtenerReservasPorFecha); // 👈 Ya la tenías
 
-    if (fecha) {
-      const inicioDelDia = new Date(fecha);
-      inicioDelDia.setHours(0, 0, 0, 0);
+// Extra (admin)
+router.get("/exportar-pdf", exportarReservasPDF);
+router.get("/lista-espera", obtenerListaEspera);
+router.get("/resumen", obtenerResumenPorRango);
 
-      const finDelDia = new Date(fecha);
-      finDelDia.setHours(23, 59, 59, 999);
-
-      filtro.fecha = { $gte: inicioDelDia, $lte: finDelDia };
-    }
-
-    const reservas = await Reserva.find(filtro).sort({ fecha: 1, hora: 1 });
-    res.status(200).json(reservas);
-  } catch (error) {
-    console.error("Error al obtener reservas:", error);
-    res.status(500).json({ error: "Error del servidor" });
-  }
-});
+// Nueva ruta para eliminar
+router.delete("/:id", eliminarReserva); // 👈 Esta es nueva
 
 module.exports = router;
