@@ -21,8 +21,22 @@ export default function NuevaReserva() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validación rápida
+    if (
+      !form.nombre ||
+      !form.email ||
+      !form.fecha ||
+      !form.hora ||
+      !form.personas ||
+      !form.sector
+    ) {
+      setMensaje("❌ Todos los campos son obligatorios");
+      return;
+    }
+
     try {
       await axios.post("http://localhost:5000/api/reservas", form);
       setMensaje("✅ Reserva creada correctamente");
