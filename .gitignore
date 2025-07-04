@@ -1,6 +1,81 @@
-node_modules
-.env
-dist
-.next
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.pnpm-debug.log*
+
+# Next.js
+.next/
+out/
+.vercel/
+dist/
+
+# Build de React (si usás algún CRA interno)
+build/
+
+# Archivos del sistema operativo
 .DS_Store
+Thumbs.db
+
+# Logs
+logs
 *.log
+log.txt
+*.pid
+*.seed
+*.pid.lock
+
+# Entornos
+.env
+.env.*.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Visual Studio Code / IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Git
+*.orig
+
+# Sistema operativo Windows
+ehthumbs.db
+Icon?
+desktop.ini
+
+# Archivos de pruebas temporales
+*.tgz
+*.swp
+*.bak
+*.tmp
+
+# Firebase (si usás)
+.firebase/
+.firebaserc
+
+# Storybook (si usás)
+out-storybook/
+.storybook/
+
+# Coverage (si usás testing)
+coverage/
+
+# Publicidad no deseada
+*.zip
+*.rar
+
+# LFS (si empezás a usar Git LFS más adelante)
+*.psd
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.exe
