@@ -1,10 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, ChangeEvent, FormEvent } from "react";
 import axios from "axios";
+import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { CheckCircle } from "lucide-react";
+
+interface ReservaForm {
+  nombre: string;
+  email: string;
+  fecha: string;
+  hora: string;
+  personas: number;
+  sector: "Patio" | "Esquina";
+}
 
 export default function NuevaReserva() {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ReservaForm>({
     nombre: "",
     email: "",
     fecha: "",
@@ -13,18 +25,21 @@ export default function NuevaReserva() {
     sector: "Patio",
   });
 
-  const [mensaje, setMensaje] = useState("");
+  const [mostrarAnimacion, setMostrarAnimacion] = useState<boolean>(false);
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prevForm) => ({
+      ...prevForm,
+      [name]: name === "personas" ? parseInt(value) : value,
+    }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    // Validación rápida
     if (
       !form.nombre ||
       !form.email ||
@@ -33,13 +48,23 @@ export default function NuevaReserva() {
       !form.personas ||
       !form.sector
     ) {
-      setMensaje("❌ Todos los campos son obligatorios");
+      toast.error("❌ Todos los campos son obligatorios");
       return;
     }
 
     try {
-      await axios.post("http://localhost:5000/api/reservas", form);
-      setMensaje("✅ Reserva creada correctamente");
+      const res = await axios.post("http://localhost:5000/api/reservas", form);
+
+      if (res.data.mensaje === "Agregado a la lista de espera.") {
+        toast.success("Te sumamos a la lista de espera 👀");
+      } else {
+        toast.success("¡Reserva confirmada! 🎉");
+      }
+
+      setMostrarAnimacion(true);
+      setTimeout(() => setMostrarAnimacion(false), 2000);
+
+      // Reset form
       setForm({
         nombre: "",
         email: "",
@@ -48,15 +73,37 @@ export default function NuevaReserva() {
         personas: 1,
         sector: "Patio",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al crear reserva:", error);
-      setMensaje("❌ Error al crear la reserva");
+      const mensaje =
+        error?.response?.data?.error || "❌ Error al crear la reserva";
+      toast.error(mensaje);
     }
   };
 
   return (
-    <div className="max-w-xl mx-auto p-6">
+    <div className="max-w-xl mx-auto p-6 relative">
       <h2 className="text-2xl font-bold mb-4">Nueva Reserva</h2>
+
+      <AnimatePresence>
+        {mostrarAnimacion && (
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1.2, opacity: 1 }}
+            exit={{ scale: 0, opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80 rounded-lg"
+          >
+            <div className="flex flex-col items-center">
+              <CheckCircle className="w-20 h-20 text-green-500" />
+              <p className="text-green-700 font-semibold mt-2 text-xl">
+                ¡Reserva confirmada!
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="text"
@@ -64,48 +111,38 @@ export default function NuevaReserva() {
           placeholder="Nombre"
           value={form.nombre}
           onChange={handleChange}
-          required
           className="w-full p-2 border rounded"
         />
-
         <input
           type="email"
           name="email"
           placeholder="Email"
           value={form.email}
           onChange={handleChange}
-          required
           className="w-full p-2 border rounded"
         />
-
         <input
           type="date"
           name="fecha"
           value={form.fecha}
           onChange={handleChange}
-          required
           className="w-full p-2 border rounded"
         />
-
         <input
           type="time"
           name="hora"
           value={form.hora}
           onChange={handleChange}
-          required
           className="w-full p-2 border rounded"
         />
-
         <input
           type="number"
           name="personas"
           min="1"
           value={form.personas}
           onChange={handleChange}
-          required
           className="w-full p-2 border rounded"
         />
-
         <select
           name="sector"
           value={form.sector}
@@ -123,8 +160,6 @@ export default function NuevaReserva() {
           Reservar
         </button>
       </form>
-
-      {mensaje && <p className="mt-4 text-center">{mensaje}</p>}
     </div>
   );
 }

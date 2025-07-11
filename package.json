@@ -1,5 +1,12 @@
 {
   "dependencies": {
+    "framer-motion": "^12.23.3",
+    "lucide-react": "^0.525.0",
     "pdfkit": "^0.17.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.13",
+    "@types/react": "^19.1.8",
+    "typescript": "^5.8.3"
   }
 }

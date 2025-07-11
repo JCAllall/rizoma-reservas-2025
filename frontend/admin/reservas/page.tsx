@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import socket from "@/utils/socket";
 
 interface Reserva {
   _id: string;
@@ -14,26 +15,47 @@ interface Reserva {
 export default function AdminReservas() {
   const [fecha, setFecha] = useState("");
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [eventos, setEventos] = useState<string[]>([]);
 
   const sectores = ["Patio", "Esquina"];
   const horarios = ["19:30", "20:00", "20:30", "21:00", "21:30", "21:45"];
 
+  const fetchReservas = async (fechaElegida: string) => {
+    try {
+      const res = await fetch(
+        `http://localhost:5000/api/reservas?fecha=${fechaElegida}`
+      );
+      const data = await res.json();
+      setReservas(data);
+    } catch (err) {
+      console.error("Error al cargar reservas:", err);
+    }
+  };
+
   useEffect(() => {
-    if (!fecha) return;
+    if (fecha) {
+      fetchReservas(fecha);
+    }
+  }, [fecha]);
 
-    const fetchReservas = async () => {
-      try {
-        const res = await fetch(
-          `http://localhost:5000/api/reservas?fecha=${fecha}`
-        );
-        const data = await res.json();
-        setReservas(data);
-      } catch (err) {
-        console.error("Error al cargar reservas:", err);
-      }
+  useEffect(() => {
+    socket.on("reservaCreada", (reserva) => {
+      setEventos((prev) => [
+        ...prev,
+        `✅ Reserva nueva: ${reserva.nombre} (${reserva.hora})`,
+      ]);
+      if (fecha === reserva.fecha) fetchReservas(fecha); // actualizar si es la misma fecha
+    });
+
+    socket.on("reservaEliminada", (id) => {
+      setEventos((prev) => [...prev, `❌ Reserva eliminada (ID): ${id}`]);
+      setReservas((prev) => prev.filter((r) => r._id !== id));
+    });
+
+    return () => {
+      socket.off("reservaCreada");
+      socket.off("reservaEliminada");
     };
-
-    fetchReservas();
   }, [fecha]);
 
   const eliminarReserva = async (id: string) => {
@@ -44,11 +66,8 @@ export default function AdminReservas() {
         method: "DELETE",
       });
 
-      if (res.ok) {
-        setReservas((prev) => prev.filter((r) => r._id !== id));
-      } else {
-        alert("Error al eliminar la reserva.");
-      }
+      if (!res.ok) alert("Error al eliminar la reserva.");
+      // No hace falta actualizar manualmente: ya se actualiza por WebSocket
     } catch (err) {
       console.error("Error al eliminar reserva:", err);
       alert("Error al conectar con el servidor.");
@@ -86,10 +105,8 @@ export default function AdminReservas() {
     const total = reservas
       .filter((r) => r.sector === sector)
       .reduce((sum, r) => sum + r.personas, 0);
-
     const limite = sector === "Patio" ? 40 : 35;
     const porcentaje = (total / limite) * 100;
-
     return { sector, total, limite, porcentaje };
   });
 
@@ -97,7 +114,6 @@ export default function AdminReservas() {
     const total = reservas
       .filter((r) => r.hora === hora)
       .reduce((sum, r) => sum + r.personas, 0);
-
     return { hora, total };
   });
 
@@ -119,6 +135,17 @@ export default function AdminReservas() {
         >
           Exportar CSV
         </button>
+      )}
+
+      {eventos.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold mb-2">Eventos en tiempo real</h2>
+          {eventos.map((e, i) => (
+            <p key={i} className="text-sm text-green-700">
+              {e}
+            </p>
+          ))}
+        </div>
       )}
 
       {reservas.length === 0 ? (

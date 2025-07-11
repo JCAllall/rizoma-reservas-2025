@@ -13,25 +13,25 @@ const {
   obtenerListaEspera,
   obtenerResumenPorRango,
   obtenerReservasPorFecha,
-  eliminarReserva, // 👈 Agregamos esto
+  eliminarReserva,
 } = require("../controllers/reservationController");
 
-// Rutas principales
-router.post("/", crearReserva);
+// Rutas específicas primero
 router.get("/horarios-ocupados", obtenerHorariosOcupados);
 router.get("/capacidad", getCapacidadPorSector);
-router.post("/lista-espera", guardarEnListaEspera);
+router.get("/lista-espera", obtenerListaEspera); // evitar duplicado
 router.get("/disponibilidad", verificarDisponibilidadInteligente);
 router.get("/verificar-capacidad", verificarCapacidadSector);
 router.get("/capacidad-horaria", obtenerCapacidadHorariaYDiaria);
-router.get("/", obtenerReservasPorFecha); // 👈 Ya la tenías
-
-// Extra (admin)
 router.get("/exportar-pdf", exportarReservasPDF);
-router.get("/lista-espera", obtenerListaEspera);
 router.get("/resumen", obtenerResumenPorRango);
 
-// Nueva ruta para eliminar
-router.delete("/:id", eliminarReserva); // 👈 Esta es nueva
+// POST y DELETE
+router.post("/", crearReserva);
+router.post("/lista-espera", guardarEnListaEspera);
+router.delete("/:id", eliminarReserva);
+
+// ⚠️ Ruta genérica al final
+router.get("/", obtenerReservasPorFecha);
 
 module.exports = router;

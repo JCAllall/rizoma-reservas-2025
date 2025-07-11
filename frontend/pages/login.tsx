@@ -1,12 +1,13 @@
-import { useState } from "react";
+// frontend/pages/login.tsx
+import { useState, ChangeEvent, FormEvent } from "react";
 import axios from "axios";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [mensaje, setMensaje] = useState("");
+const LoginPage = () => {
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [mensaje, setMensaje] = useState<string>("");
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
@@ -17,8 +18,8 @@ export default function LoginPage() {
 
       setMensaje("Login exitoso ✅");
       console.log("TOKEN:", res.data.token);
-      // Acá podrías guardar el token en localStorage o context si querés persistencia
-    } catch (err) {
+      // Podés guardar el token en localStorage si querés
+    } catch (err: any) {
       console.error("Error al loguear:", err);
       setMensaje(err.response?.data?.message || "Error al loguear");
     }
@@ -40,14 +41,18 @@ export default function LoginPage() {
           type="email"
           placeholder="Email"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setEmail(e.target.value)
+          }
           required
         />
         <input
           type="password"
           placeholder="Contraseña"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) =>
+            setPassword(e.target.value)
+          }
           required
         />
         <button type="submit">Ingresar</button>
@@ -55,4 +60,6 @@ export default function LoginPage() {
       {mensaje && <p>{mensaje}</p>}
     </div>
   );
-}
+};
+
+export default LoginPage;

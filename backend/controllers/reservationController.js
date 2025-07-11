@@ -1,6 +1,14 @@
 // backend/controllers/reservationController.js
 const Reserva = require("../models/reserva");
+const PDFDocument = require("pdfkit");
 
+let io; // WebSocket instance
+
+function setSocketIO(ioInstance) {
+  io = ioInstance;
+}
+
+// ✅ Crear reserva
 const crearReserva = async (req, res) => {
   try {
     const { nombre, email, fecha, hora, sector, personas } = req.body;
@@ -15,11 +23,10 @@ const crearReserva = async (req, res) => {
       listaEspera: false,
     });
 
-    // ✅ Nuevos límites por sector
+    // Nuevos límites por sector
     const LIMITE_DIARIO = sector === "Patio" ? 40 : 46;
     const LIMITE_HORARIO = 10;
 
-    // Calcular total de personas en el día
     const totalPersonasDia = reservas.reduce(
       (acc, r) => acc + (r.personas || 0),
       0
@@ -31,7 +38,6 @@ const crearReserva = async (req, res) => {
       });
     }
 
-    // Calcular total de personas en ese horario
     const personasEnHorario = reservas
       .filter((r) => r.hora === hora)
       .reduce((acc, r) => acc + (r.personas || 0), 0);
@@ -46,6 +52,16 @@ const crearReserva = async (req, res) => {
     const nuevaReserva = new Reserva(req.body);
     await nuevaReserva.save();
 
+    // Emitimos evento WebSocket
+    if (io) {
+      io.emit("reservaCreada", {
+        nombre: nuevaReserva.nombre,
+        hora: nuevaReserva.hora,
+        fecha: nuevaReserva.fecha,
+        sector: nuevaReserva.sector,
+      });
+    }
+
     res.status(201).json({ mensaje: "Reserva guardada correctamente" });
   } catch (error) {
     console.error("Error al guardar reserva:", error);
@@ -53,23 +69,34 @@ const crearReserva = async (req, res) => {
   }
 };
 
-// ✅ GET: Horarios ocupados para una fecha
+// ✅ Eliminar reserva
+const eliminarReserva = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Reserva.findByIdAndDelete(id);
+
+    if (io) {
+      io.emit("reservaEliminada", id);
+    }
+
+    res.status(200).json({ message: "Reserva eliminada con éxito" });
+  } catch (error) {
+    console.error("Error al eliminar reserva:", error);
+    res.status(500).json({ message: "Error del servidor" });
+  }
+};
+
 const obtenerHorariosOcupados = async (req, res) => {
   try {
     const { fecha } = req.query;
-
     if (!fecha) return res.status(400).json({ error: "Fecha requerida" });
 
     const inicio = new Date(fecha);
     inicio.setHours(0, 0, 0, 0);
-
     const fin = new Date(fecha);
     fin.setHours(23, 59, 59, 999);
 
-    const reservas = await Reserva.find({
-      fecha: { $gte: inicio, $lte: fin },
-    });
-
+    const reservas = await Reserva.find({ fecha: { $gte: inicio, $lte: fin } });
     const horariosOcupados = reservas.map((r) => r.hora);
 
     res.status(200).json(horariosOcupados);
@@ -79,7 +106,6 @@ const obtenerHorariosOcupados = async (req, res) => {
   }
 };
 
-// ✅ GET: Obtener reservas por fecha (para administrador)
 const obtenerReservasPorFecha = async (req, res) => {
   try {
     const { fecha } = req.query;
@@ -87,7 +113,6 @@ const obtenerReservasPorFecha = async (req, res) => {
 
     const inicio = new Date(fecha);
     inicio.setHours(0, 0, 0, 0);
-
     const fin = new Date(fecha);
     fin.setHours(23, 59, 59, 999);
 
@@ -103,21 +128,14 @@ const obtenerReservasPorFecha = async (req, res) => {
   }
 };
 
-// ✅ GET: Verificar cuántas personas hay en un sector
 const verificarCapacidadSector = async (req, res) => {
   try {
     const { fecha, sector } = req.query;
-
-    if (!fecha || !sector) {
+    if (!fecha || !sector)
       return res.status(400).json({ error: "Fecha y sector requeridos." });
-    }
 
     const reservas = await Reserva.find({ fecha, sector });
-
-    const totalPersonas = reservas.reduce(
-      (sum, reserva) => sum + reserva.personas,
-      0
-    );
+    const totalPersonas = reservas.reduce((sum, r) => sum + r.personas, 0);
 
     res.json({ totalPersonas });
   } catch (error) {
@@ -126,18 +144,14 @@ const verificarCapacidadSector = async (req, res) => {
   }
 };
 
-// ✅ GET: Capacidad por fecha y sector (repetido)
 const getCapacidadPorSector = async (req, res) => {
   try {
     const { fecha, sector } = req.query;
-
     const reservas = await Reserva.find({ fecha, sector });
-
     const totalPersonas = reservas.reduce(
       (acc, r) => acc + parseInt(r.personas || 0),
       0
     );
-
     res.json({ totalPersonas });
   } catch (error) {
     console.error("Error al obtener capacidad:", error);
@@ -145,11 +159,9 @@ const getCapacidadPorSector = async (req, res) => {
   }
 };
 
-// ✅ POST: Agregar usuario a la lista de espera
 const guardarEnListaEspera = async (req, res) => {
   try {
     const { nombre, email, fecha, sector } = req.body;
-
     if (!nombre || !email || !fecha || !sector) {
       return res.status(400).json({ error: "Faltan campos requeridos." });
     }
@@ -161,7 +173,6 @@ const guardarEnListaEspera = async (req, res) => {
       sector,
       listaEspera: true,
     });
-
     await nuevaEntrada.save();
 
     res.status(201).json({ mensaje: "Agregado a la lista de espera." });
@@ -171,11 +182,9 @@ const guardarEnListaEspera = async (req, res) => {
   }
 };
 
-// ✅ GET: Disponibilidad inteligente para Esquina
 const verificarDisponibilidadInteligente = async (req, res) => {
   try {
     const { fecha, sector, personas, hora } = req.query;
-
     if (!fecha || !sector || !personas || !hora) {
       return res
         .status(400)
@@ -187,37 +196,26 @@ const verificarDisponibilidadInteligente = async (req, res) => {
     const ahora = new Date();
     const horasDeAnticipo = (horaReserva - ahora) / (1000 * 60 * 60);
 
-    if (sector === "Patio") {
-      return res.json({ disponible: true }); // Patio siempre es flexible
-    }
-
-    if (personasSolicitadas > 8) {
+    if (sector === "Patio") return res.json({ disponible: true });
+    if (personasSolicitadas > 8)
       return res.json({ mensaje: "WhatsApp", disponible: false });
-    }
 
     const reservas = await Reserva.find({ fecha, sector, listaEspera: false });
-
-    let mesas2 = 10;
-    let mesas4 = 4;
+    let mesas2 = 10,
+      mesas4 = 4;
 
     for (const r of reservas) {
       const p = r.personas;
-      if (p <= 3 && mesas2 > 0) {
-        mesas2--;
-      } else if (p === 4 && mesas4 > 0) {
-        mesas4--;
-      } else if (p <= 3 && mesas4 > 0 && horasDeAnticipo < 5) {
-        mesas4--;
-      }
+      if (p <= 3 && mesas2 > 0) mesas2--;
+      else if (p === 4 && mesas4 > 0) mesas4--;
+      else if (p <= 3 && mesas4 > 0 && horasDeAnticipo < 5) mesas4--;
     }
 
     let personasRestantes = personasSolicitadas;
-
     while (personasRestantes >= 2 && mesas2 > 0) {
       personasRestantes -= 3;
       mesas2--;
     }
-
     while (personasRestantes > 0 && mesas4 > 0) {
       if (personasSolicitadas === 4 || horasDeAnticipo < 5) {
         personasRestantes -= 4;
@@ -227,23 +225,18 @@ const verificarDisponibilidadInteligente = async (req, res) => {
       }
     }
 
-    const disponible = personasRestantes <= 0;
-
-    res.json({ disponible });
+    res.json({ disponible: personasRestantes <= 0 });
   } catch (error) {
     console.error("Error en disponibilidad inteligente:", error);
     res.status(500).json({ error: "Error del servidor" });
   }
 };
 
-// ✅ GET: Capacidad horaria y total del día
 const obtenerCapacidadHorariaYDiaria = async (req, res) => {
   try {
     const { fecha, sector } = req.query;
-
-    if (!fecha || !sector) {
+    if (!fecha || !sector)
       return res.status(400).json({ error: "Fecha y sector requeridos" });
-    }
 
     const reservas = await Reserva.find({ fecha, sector, listaEspera: false });
 
@@ -251,12 +244,9 @@ const obtenerCapacidadHorariaYDiaria = async (req, res) => {
       (acc, r) => acc + (r.personas || 0),
       0
     );
-
     const personasPorHorario = {};
     reservas.forEach((r) => {
-      if (!personasPorHorario[r.hora]) {
-        personasPorHorario[r.hora] = 0;
-      }
+      if (!personasPorHorario[r.hora]) personasPorHorario[r.hora] = 0;
       personasPorHorario[r.hora] += r.personas || 0;
     });
 
@@ -266,9 +256,6 @@ const obtenerCapacidadHorariaYDiaria = async (req, res) => {
     res.status(500).json({ error: "Error del servidor" });
   }
 };
-
-// Generar PDF de reservas
-const PDFDocument = require("pdfkit");
 
 const exportarReservasPDF = async (req, res) => {
   try {
@@ -311,7 +298,6 @@ const exportarReservasPDF = async (req, res) => {
   }
 };
 
-//Ver y exportar la lista de espera
 const obtenerListaEspera = async (req, res) => {
   try {
     const { fecha } = req.query;
@@ -332,35 +318,30 @@ const obtenerListaEspera = async (req, res) => {
   }
 };
 
-//Resumen de reservas por rango de fechas
 const obtenerResumenPorRango = async (req, res) => {
   try {
     const { desde, hasta } = req.query;
-
-    if (!desde || !hasta) {
+    if (!desde || !hasta)
       return res
         .status(400)
         .json({ error: "Parámetros 'desde' y 'hasta' requeridos" });
-    }
-
-    const desdeFecha = new Date(`${desde}T00:00:00`);
-    const hastaFecha = new Date(`${hasta}T23:59:59`);
 
     const reservas = await Reserva.find({
-      fecha: { $gte: desdeFecha, $lte: hastaFecha },
+      fecha: {
+        $gte: new Date(`${desde}T00:00:00`),
+        $lte: new Date(`${hasta}T23:59:59`),
+      },
       listaEspera: false,
     });
 
-    let totalPersonas = 0;
-    const porSector = {};
-    const porHorario = {};
-
+    let totalPersonas = 0,
+      porSector = {},
+      porHorario = {};
     reservas.forEach((r) => {
-      const personas = r.personas || 0;
-      totalPersonas += personas;
-
-      porSector[r.sector] = (porSector[r.sector] || 0) + personas;
-      porHorario[r.hora] = (porHorario[r.hora] || 0) + personas;
+      const p = r.personas || 0;
+      totalPersonas += p;
+      porSector[r.sector] = (porSector[r.sector] || 0) + p;
+      porHorario[r.hora] = (porHorario[r.hora] || 0) + p;
     });
 
     res.json({ totalPersonas, porSector, porHorario });
@@ -380,20 +361,10 @@ const obtenerTodasLasReservas = async (req, res) => {
   }
 };
 
-// ✅ Eliminar reserva por ID (DELETE /api/reservas/:id)
-const eliminarReserva = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await Reserva.findByIdAndDelete(id);
-    res.status(200).json({ message: "Reserva eliminada con éxito" });
-  } catch (error) {
-    console.error("Error al eliminar reserva:", error);
-    res.status(500).json({ message: "Error del servidor" });
-  }
-};
-
 module.exports = {
   crearReserva,
+  eliminarReserva,
+  setSocketIO,
   obtenerTodasLasReservas,
   obtenerHorariosOcupados,
   getCapacidadPorSector,
@@ -405,5 +376,4 @@ module.exports = {
   obtenerListaEspera,
   obtenerResumenPorRango,
   obtenerReservasPorFecha,
-  eliminarReserva,
 };

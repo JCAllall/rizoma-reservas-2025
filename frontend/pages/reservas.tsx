@@ -1,15 +1,29 @@
-// pages/reservas.jsx
+// pages/reservas.tsx
 import { useEffect, useState } from "react";
 import axios from "axios";
 
+// Definimos el tipo de datos esperados para una reserva
+interface Reserva {
+  _id: string;
+  nombre: string;
+  email: string;
+  fecha: string;
+  hora: string;
+  personas: number;
+  sector: string;
+  listaEspera: boolean;
+}
+
 export default function ListaReservas() {
-  const [reservas, setReservas] = useState([]);
-  const [error, setError] = useState("");
+  const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [error, setError] = useState<string>("");
 
   useEffect(() => {
     const fetchReservas = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/reservas");
+        const res = await axios.get<Reserva[]>(
+          "http://localhost:5000/api/reservas"
+        );
         setReservas(res.data);
       } catch (err) {
         console.error("Error al obtener reservas:", err);
@@ -24,7 +38,7 @@ export default function ListaReservas() {
     <div style={{ padding: "2rem" }}>
       <h2>Lista de Reservas</h2>
       {error && <p>{error}</p>}
-      <table border="1" cellPadding="8">
+      <table border={1} cellPadding={8}>
         <thead>
           <tr>
             <th>Nombre</th>

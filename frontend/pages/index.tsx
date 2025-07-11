@@ -1,22 +1,23 @@
-import { useState } from "react";
+// frontend/pages/register.tsx
+import { useState, ChangeEvent, FormEvent } from "react";
 import axios from "axios";
 import { useRouter } from "next/router";
 
-export default function Register() {
+const Register = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
   });
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
   const router = useRouter();
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -30,7 +31,7 @@ export default function Register() {
       setTimeout(() => {
         router.push("/login");
       }, 1500);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.message || "Error al registrar");
     }
   };
@@ -72,4 +73,6 @@ export default function Register() {
       {success && <p style={{ color: "green" }}>{success}</p>}
     </div>
   );
-}
+};
+
+export default Register;
