@@ -1,78 +1,76 @@
-// frontend/pages/register.tsx
-import { useState, ChangeEvent, FormEvent } from "react";
-import axios from "axios";
-import { useRouter } from "next/router";
+"use client";
+import {
+  Instagram,
+  Globe,
+  MapPin,
+  CalendarDays,
+  Gift,
+  ScrollText,
+  ClipboardList,
+} from "lucide-react";
 
-const Register = () => {
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
-  const [error, setError] = useState<string>("");
-  const [success, setSuccess] = useState<string>("");
-  const router = useRouter();
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-
-    try {
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/register",
-        formData
-      );
-      setSuccess(res.data.message);
-      setTimeout(() => {
-        router.push("/login");
-      }, 1500);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Error al registrar");
-    }
-  };
-
+export default function Home() {
   return (
-    <div style={{ maxWidth: 400, margin: "50px auto" }}>
-      <h2>Registro</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="name"
-          placeholder="Nombre"
-          value={formData.name}
-          onChange={handleChange}
-          required
+    <div className="min-h-screen bg-black text-white flex flex-col items-center px-6 py-10 space-y-6">
+      {/* Logo */}
+      <img
+        src="/rizoma-app/public/rizoma-logo.PNG"
+        alt="Rizoma"
+        className="w-28 h-auto opacity-90"
+      />
+
+      {/* Nombre y frase */}
+      <h1 className="text-2xl font-bold mt-2">Rizoma</h1>
+      <p className="text-sm text-gray-400 italic">* Momentos que conectan *</p>
+
+      {/* Redes sociales */}
+      <div className="flex gap-5 text-2xl mt-2">
+        <a href="https://instagram.com" target="_blank">
+          <Instagram />
+        </a>
+        <a href="https://rizoma.com.ar" target="_blank">
+          <Globe />
+        </a>
+      </div>
+
+      {/* Botones principales */}
+      <div className="flex flex-col gap-4 w-full max-w-sm mt-4">
+        <Boton
+          icono={<MapPin />}
+          texto="¿Dónde estamos?"
+          href="https://maps.google.com"
         />
-        <br />
-        <input
-          type="email"
-          name="email"
-          placeholder="Correo"
-          value={formData.email}
-          onChange={handleChange}
-          required
-        />
-        <br />
-        <input
-          type="password"
-          name="password"
-          placeholder="Contraseña"
-          value={formData.password}
-          onChange={handleChange}
-          required
-        />
-        <br />
-        <button type="submit">Registrarse</button>
-      </form>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {success && <p style={{ color: "green" }}>{success}</p>}
+        <Boton icono={<CalendarDays />} texto="Reservá" href="/nuevaReserva" />
+        <Boton icono={<Gift />} texto="Gift Card" href="/gift" />
+        <Boton icono={<ScrollText />} texto="Menú" href="/menu" />
+        <Boton icono={<ClipboardList />} texto="Delivery" href="/delivery" />
+      </div>
+
+      {/* Sección final */}
+      <div className="mt-10 w-full max-w-sm text-center space-y-2">
+        <p className="font-semibold text-lg">Contactanos</p>
+        <Boton texto="Celebraciones" href="/celebraciones" />
+      </div>
     </div>
   );
-};
+}
 
-export default Register;
+function Boton({
+  icono,
+  texto,
+  href,
+}: {
+  icono?: React.ReactNode;
+  texto: string;
+  href: string;
+}) {
+  return (
+    <a
+      href={href}
+      className="flex items-center gap-3 w-full justify-center bg-zinc-800 hover:bg-zinc-700 transition p-4 rounded-2xl text-white text-base font-medium shadow"
+    >
+      {icono && <span className="text-xl">{icono}</span>}
+      {texto}
+    </a>
+  );
+}

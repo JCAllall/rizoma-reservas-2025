@@ -1,8 +1,9 @@
-// backend/controllers/reservationController.js
 const Reserva = require("../models/reserva");
 const PDFDocument = require("pdfkit");
+const { verificarMesasDisponibles } = require("../utils/mesaLogic");
+const sendEmail = require("../utils/sendEmail"); // ✅ Agregado para envío de email
 
-let io; // WebSocket instance
+let io;
 
 function setSocketIO(ioInstance) {
   io = ioInstance;
@@ -17,15 +18,30 @@ const crearReserva = async (req, res) => {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
 
+    const resultado = await verificarMesasDisponibles({
+      fecha,
+      sector,
+      personas,
+      hora,
+    });
+
+    if (!resultado.disponible) {
+      return res.status(400).json({
+        error:
+          resultado.mensaje === "WhatsApp"
+            ? "Para más de 8 personas contactanos por WhatsApp."
+            : "No hay disponibilidad de mesas para ese horario.",
+      });
+    }
+
     const reservas = await Reserva.find({
       fecha,
       sector,
       listaEspera: false,
     });
 
-    // Nuevos límites por sector
     const LIMITE_DIARIO = sector === "Patio" ? 40 : 46;
-    const LIMITE_HORARIO = 10;
+    const LIMITE_HORARIO = 12;
 
     const totalPersonasDia = reservas.reduce(
       (acc, r) => acc + (r.personas || 0),
@@ -49,10 +65,11 @@ const crearReserva = async (req, res) => {
       });
     }
 
+    // ✅ Guardar reserva
     const nuevaReserva = new Reserva(req.body);
     await nuevaReserva.save();
 
-    // Emitimos evento WebSocket
+    // ✅ Emitir WebSocket
     if (io) {
       io.emit("reservaCreada", {
         nombre: nuevaReserva.nombre,
@@ -61,6 +78,35 @@ const crearReserva = async (req, res) => {
         sector: nuevaReserva.sector,
       });
     }
+
+    // ✅ Enviar email de confirmación
+    await sendEmail({
+      to: email,
+      subject: "Confirmación de reserva en Rizoma",
+      text: `Hola ${nombre}, tu reserva fue confirmada para el día ${fecha} a las ${hora} en el sector ${sector}, para ${personas} persona(s). ¡Te esperamos!`,
+      html: /* html */ `
+  <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; padding: 24px; border: 1px solid #e2e2e2; border-radius: 12px; background-color: #ffffff;">
+    <h2 style="color: #2e7d32; margin-bottom: 8px;">✅ ¡Reserva confirmada!</h2>
+    <p style="margin: 0 0 8px;">Hola <strong>${nombre}</strong>,</p>
+    <p style="margin: 0 0 16px;">Tu reserva fue confirmada con éxito. Aquí tenés los detalles:</p>
+
+    <ul style="padding-left: 20px; margin-bottom: 20px;">
+      <li><strong>📅 Fecha:</strong> ${fecha}</li>
+      <li><strong>📍 Sector:</strong> ${sector}</li>
+      <li><strong>⏰ Horario:</strong> ${hora}</li>
+      <li><strong>👥 Personas:</strong> ${personas}</li>
+    </ul>
+
+    <p style="margin: 0 0 16px;">Gracias por elegir <strong>Rizoma</strong>. ¡Te esperamos!</p>
+
+    <div style="text-align: center; margin-top: 24px;">
+      <img src="https://i.imgur.com/Ib0iDCn.png" alt="Logo Rizoma" style="max-width: 120px; opacity: 0.8;" />
+    </div>
+
+    <p style="font-size: 12px; color: #999; margin-top: 24px; text-align: center;">Este es un mensaje automático. No respondas a este correo.</p>
+  </div>
+  `,
+    });
 
     res.status(201).json({ mensaje: "Reserva guardada correctamente" });
   } catch (error) {
@@ -191,41 +237,14 @@ const verificarDisponibilidadInteligente = async (req, res) => {
         .json({ error: "Faltan datos para verificar disponibilidad" });
     }
 
-    const personasSolicitadas = parseInt(personas);
-    const horaReserva = new Date(`${fecha}T${hora}:00`);
-    const ahora = new Date();
-    const horasDeAnticipo = (horaReserva - ahora) / (1000 * 60 * 60);
+    const resultado = await verificarMesasDisponibles({
+      fecha,
+      sector,
+      personas,
+      hora,
+    });
 
-    if (sector === "Patio") return res.json({ disponible: true });
-    if (personasSolicitadas > 8)
-      return res.json({ mensaje: "WhatsApp", disponible: false });
-
-    const reservas = await Reserva.find({ fecha, sector, listaEspera: false });
-    let mesas2 = 10,
-      mesas4 = 4;
-
-    for (const r of reservas) {
-      const p = r.personas;
-      if (p <= 3 && mesas2 > 0) mesas2--;
-      else if (p === 4 && mesas4 > 0) mesas4--;
-      else if (p <= 3 && mesas4 > 0 && horasDeAnticipo < 5) mesas4--;
-    }
-
-    let personasRestantes = personasSolicitadas;
-    while (personasRestantes >= 2 && mesas2 > 0) {
-      personasRestantes -= 3;
-      mesas2--;
-    }
-    while (personasRestantes > 0 && mesas4 > 0) {
-      if (personasSolicitadas === 4 || horasDeAnticipo < 5) {
-        personasRestantes -= 4;
-        mesas4--;
-      } else {
-        break;
-      }
-    }
-
-    res.json({ disponible: personasRestantes <= 0 });
+    res.json(resultado);
   } catch (error) {
     console.error("Error en disponibilidad inteligente:", error);
     res.status(500).json({ error: "Error del servidor" });

@@ -27,6 +27,7 @@ const authRoutes = require("./routes/auth");
 const reservationRoutes = require("./routes/reservationRoutes");
 app.use("/api/auth", authRoutes);
 app.use("/api/reservas", reservationRoutes);
+app.use("/api/carta", require("./routes/carta"));
 
 // WebSocket handlers
 io.on("connection", (socket) => {

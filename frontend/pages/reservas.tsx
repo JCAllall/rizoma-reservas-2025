@@ -1,7 +1,7 @@
 // pages/reservas.tsx
 import { useEffect, useState } from "react";
 import axios from "axios";
-
+import PasoReserva from "../components/PasoReserva";
 // Definimos el tipo de datos esperados para una reserva
 interface Reserva {
   _id: string;
@@ -33,6 +33,14 @@ export default function ListaReservas() {
 
     fetchReservas();
   }, []);
+
+  export default function PageReserva() {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+        <PasoReserva />
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: "2rem" }}>
