@@ -79,12 +79,13 @@ const crearReserva = async (req, res) => {
       });
     }
 
-    // ✅ Enviar email de confirmación
-    await sendEmail({
-      to: email,
-      subject: "Confirmación de reserva en Rizoma",
-      text: `Hola ${nombre}, tu reserva fue confirmada para el día ${fecha} a las ${hora} en el sector ${sector}, para ${personas} persona(s). ¡Te esperamos!`,
-      html: /* html */ `
+    // ✅ Intentar enviar email, pero sin romper la reserva si falla
+try {
+  await sendEmail({
+    to: email,
+    subject: "Confirmación de reserva en Rizoma",
+    text: `Hola ${nombre}, tu reserva fue confirmada para el día ${fecha} a las ${hora} en el sector ${sector}, para ${personas} persona(s). ¡Te esperamos!`,
+    html: /* html */ `
   <div style="font-family: Arial, sans-serif; max-width: 520px; margin: auto; padding: 24px; border: 1px solid #e2e2e2; border-radius: 12px; background-color: #ffffff;">
     <h2 style="color: #2e7d32; margin-bottom: 8px;">✅ ¡Reserva confirmada!</h2>
     <p style="margin: 0 0 8px;">Hola <strong>${nombre}</strong>,</p>
@@ -106,7 +107,11 @@ const crearReserva = async (req, res) => {
     <p style="font-size: 12px; color: #999; margin-top: 24px; text-align: center;">Este es un mensaje automático. No respondas a este correo.</p>
   </div>
   `,
-    });
+  });
+} catch (emailError) {
+  console.error("Error al enviar email de confirmación:", emailError.message);
+}
+
 
     res.status(201).json({ mensaje: "Reserva guardada correctamente" });
   } catch (error) {
