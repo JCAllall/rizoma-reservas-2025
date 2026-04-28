@@ -1,13 +1,14 @@
 const express = require("express");
 const router = express.Router();
+const { verificarToken } = require("../middleware/auth"); // ← lo agregamos
 
 const {
   crearReserva,
+  obtenerTodasLasReservas,
   obtenerHorariosOcupados,
   getCapacidadPorSector,
   guardarEnListaEspera,
   verificarDisponibilidadInteligente,
-  verificarCapacidadSector,
   obtenerCapacidadHorariaYDiaria,
   exportarReservasPDF,
   obtenerListaEspera,
@@ -16,22 +17,22 @@ const {
   eliminarReserva,
 } = require("../controllers/reservationController");
 
-// Rutas específicas primero
+// ── Rutas públicas ──────────────────────────────────────
 router.get("/horarios-ocupados", obtenerHorariosOcupados);
 router.get("/capacidad", getCapacidadPorSector);
-router.get("/lista-espera", obtenerListaEspera); // evitar duplicado
 router.get("/disponibilidad", verificarDisponibilidadInteligente);
-router.get("/verificar-capacidad", verificarCapacidadSector);
 router.get("/capacidad-horaria", obtenerCapacidadHorariaYDiaria);
-router.get("/exportar-pdf", exportarReservasPDF);
-router.get("/resumen", obtenerResumenPorRango);
-
-// POST y DELETE
 router.post("/", crearReserva);
 router.post("/lista-espera", guardarEnListaEspera);
-router.delete("/:id", eliminarReserva);
 
-// ⚠️ Ruta genérica al final
+// ── Rutas protegidas (solo admin) ───────────────────────
+router.get("/todas", verificarToken, obtenerTodasLasReservas);
+router.get("/lista-espera", verificarToken, obtenerListaEspera);
+router.get("/exportar-pdf", verificarToken, exportarReservasPDF);
+router.get("/resumen", verificarToken, obtenerResumenPorRango);
+router.delete("/:id", verificarToken, eliminarReserva);
+
+// ── Ruta genérica al final ──────────────────────────────
 router.get("/", obtenerReservasPorFecha);
 
 module.exports = router;

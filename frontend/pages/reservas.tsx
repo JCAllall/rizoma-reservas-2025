@@ -1,77 +1,103 @@
-// pages/reservas.tsx
 import { useEffect, useState } from "react";
-import axios from "axios";
-import PasoReserva from "../components/PasoReserva";
-// Definimos el tipo de datos esperados para una reserva
+import { useRouter } from "next/router";
+import axios, { AxiosError } from "axios";
+import toast from "react-hot-toast";
+
 interface Reserva {
   _id: string;
   nombre: string;
   email: string;
+  telefono: string;
   fecha: string;
   hora: string;
   personas: number;
   sector: string;
+  comentario?: string;
   listaEspera: boolean;
 }
 
 export default function ListaReservas() {
+  const router = useRouter();
   const [reservas, setReservas] = useState<Reserva[]>([]);
-  const [error, setError] = useState<string>("");
+  const [cargando, setCargando] = useState(true);
+  const [fecha, setFecha] = useState(() => new Date().toISOString().split("T")[0]);
 
   useEffect(() => {
-    const fetchReservas = async () => {
-      try {
-        const res = await axios.get<Reserva[]>(
-          "http://localhost:5000/api/reservas"
-        );
-        setReservas(res.data);
-      } catch (err) {
-        console.error("Error al obtener reservas:", err);
-        setError("No se pudieron cargar las reservas");
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+      return;
+    }
+    fetchReservas(token);
+  }, [fecha]);
+
+  const fetchReservas = async (token: string) => {
+    setCargando(true);
+    try {
+      const res = await axios.get<{ reservas: Reserva[] }>(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/reservas?fecha=${fecha}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setReservas(res.data);
+    } catch (err) {
+      const error = err as AxiosError<{ message: string }>;
+      if (error.response?.status === 401) {
+        router.push("/login");
+      } else {
+        toast.error("No se pudieron cargar las reservas");
       }
-    };
+    } finally {
+      setCargando(false);
+    }
+  };
 
-    fetchReservas();
-  }, []);
+  const eliminarReserva = async (id: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return router.push("/login");
 
-  export default function PageReserva() {
-    return (
-      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
-        <PasoReserva />
-      </div>
-    );
-  }
+    try {
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/reservas/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setReservas((prev) => prev.filter((r) => r._id !== id));
+      toast.success("Reserva eliminada");
+    } catch {
+      toast.error("Error al eliminar la reserva");
+    }
+  };
 
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2>Lista de Reservas</h2>
-      {error && <p>{error}</p>}
-      <table border={1} cellPadding={8}>
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Email</th>
-            <th>Fecha</th>
-            <th>Hora</th>
-            <th>Personas</th>
-            <th>Sector</th>
-            <th>Lista de Espera</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reservas.map((reserva) => (
-            <tr key={reserva._id}>
-              <td>{reserva.nombre}</td>
-              <td>{reserva.email}</td>
-              <td>{new Date(reserva.fecha).toLocaleDateString()}</td>
-              <td>{reserva.hora}</td>
-              <td>{reserva.personas}</td>
-              <td>{reserva.sector}</td>
-              <td>{reserva.listaEspera ? "Sí" : "No"}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+    <div className="min-h-screen bg-zinc-900 text-white px-6 py-10">
+      <div className="max-w-5xl mx-auto space-y-6">
+
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Reservas del día</h1>
+          <input
+            type="date"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            className="bg-zinc-800 text-white px-4 py-2 rounded-xl outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+
+        {cargando ? (
+          <p className="text-zinc-400">Cargando reservas...</p>
+        ) : reservas.length === 0 ? (
+          <p className="text-zinc-400">No hay reservas para esta fecha.</p>
+        ) : (
+          <div className="space-y-3">
+            {reservas.map((reserva) => (
+              <div
+                key={reserva._id}
+                className="bg-zinc-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+              >
+                <div className="space-y-1 text-sm">
+                  <p><span className="text-zinc-400">Nombre:</span> {reserva.nombre}</p>
+                  <p><span className="text-zinc-400">Email:</span> {reserva.email}</p>
+                  <p><span className="text-zinc-400">Teléfono:</span> {reserva.telefono}</p>
+                  <p><span className="text-zinc-400">Hora:</span> {reserva.hora} — <span className="text-zinc-400">Sector:</span> {reserva.sector}</p>
+                  <p><span className="text-zinc-400">Personas:</span> {reserva.personas}</p>
+                  {reserva.comentario && (
+                    <p><span className="text-zinc-400">Comentario:</span> {reserva.comentario}</p>
+                  )}

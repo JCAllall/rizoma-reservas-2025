@@ -1,22 +1,21 @@
 const express = require("express");
 const router = express.Router();
+const { verificarToken, soloAdmin } = require("../middleware/auth");
 const {
   obtenerCarta,
+  obtenerCartaAdmin,
   agregarItem,
   editarItem,
   eliminarItem,
 } = require("../controllers/cartaController");
 
-// GET /api/carta
+// ── Rutas públicas ──────────────────────────────────────
 router.get("/", obtenerCarta);
 
-// POST /api/carta
-router.post("/", agregarItem);
-
-// PUT /api/carta/:id
-router.put("/:id", editarItem);
-
-// DELETE /api/carta/:id
-router.delete("/:id", eliminarItem);
+// ── Rutas protegidas (solo admin) ───────────────────────
+router.get("/admin", verificarToken, soloAdmin, obtenerCartaAdmin);
+router.post("/", verificarToken, soloAdmin, agregarItem);
+router.put("/:id", verificarToken, soloAdmin, editarItem);
+router.delete("/:id", verificarToken, soloAdmin, eliminarItem);
 
 module.exports = router;

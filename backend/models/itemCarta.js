@@ -1,11 +1,20 @@
 const mongoose = require("mongoose");
 
-const itemCartaSchema = new mongoose.Schema({
-  nombre: { type: String, required: true },
-  descripcion: { type: String, required: true },
-  precio: { type: Number, required: true },
-  imagenUrl: { type: String },
-  categoria: { type: String, enum: ["comida", "bebida"], required: true },
-});
+const itemCartaSchema = new mongoose.Schema(
+  {
+    nombre: { type: String, required: true, trim: true },
+    descripcion: { type: String, required: true, trim: true },
+    precio: { type: Number, required: true, min: 0 },
+    imagenUrl: { type: String, trim: true },
+    categoria: {
+      type: String,
+      enum: ["comida", "bebida", "postre", "coctel", "vino"],
+      required: true,
+    },
+    disponible: { type: Boolean, default: true },
+  },
+  { timestamps: true }
+);
 
-module.exports = mongoose.model("ItemCarta", itemCartaSchema);
+module.exports =
+  mongoose.models.ItemCarta || mongoose.model("ItemCarta", itemCartaSchema);
