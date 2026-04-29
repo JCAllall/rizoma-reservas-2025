@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, PartyPopper } from "lucide-react";
 import toast from "react-hot-toast";
 
-const WHATSAPP_NUMBER = "5493416007875"; // ← reemplazá con tu número
+const WHATSAPP_NUMBER = "5493416007875";
 
 const TIPOS_CELEBRACION = [
   { valor: "cumpleaños", label: "🎂 Cumpleaños" },
@@ -34,14 +34,8 @@ export default function Celebraciones() {
   const [cargando, setCargando] = useState(false);
 
   const handleChange = (
-
-  e: React.ChangeEvent
-
-    HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-
-  >
-
-) => {
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -49,7 +43,6 @@ export default function Celebraciones() {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setCargando(true);
-
     try {
       const mensaje =
         `🎉 *Consulta de Celebración - Rizoma*\n\n` +
@@ -60,7 +53,6 @@ export default function Celebraciones() {
         `📅 Fecha: ${form.fecha}\n` +
         `👥 Personas: ${form.personas}\n` +
         `💬 Mensaje: ${form.mensaje || "—"}`;
-
       window.open(
         `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(mensaje)}`,
         "_blank"
@@ -83,22 +75,13 @@ export default function Celebraciones() {
           <PartyPopper size={64} className="text-green-500 mx-auto" />
           <h2 className="text-2xl font-bold">¡Consulta enviada!</h2>
           <p className="text-zinc-400 text-sm">
-            Te redirigimos a WhatsApp para coordinar tu celebración. ¡Nos
-            ponemos en contacto a la brevedad!
+            Te redirigimos a WhatsApp para coordinar tu celebración. ¡Nos ponemos en contacto a la brevedad!
           </p>
           <div className="space-y-3">
             <button
               onClick={() => {
                 setEnviado(false);
-                setForm({
-                  nombre: "",
-                  email: "",
-                  telefono: "",
-                  tipo: "",
-                  fecha: "",
-                  personas: "",
-                  mensaje: "",
-                });
+                setForm({ nombre: "", email: "", telefono: "", tipo: "", fecha: "", personas: "", mensaje: "" });
               }}
               className="w-full bg-zinc-800 hover:bg-zinc-700 transition px-4 py-3 rounded-2xl text-white font-semibold"
             >
@@ -119,8 +102,6 @@ export default function Celebraciones() {
   return (
     <div className="min-h-screen bg-black text-white px-6 py-10">
       <div className="max-w-sm mx-auto space-y-8">
-
-        {/* Header */}
         <div className="flex items-center gap-4">
           <Link href="/" className="text-zinc-400 hover:text-white transition">
             <ArrowLeft size={20} />
@@ -131,7 +112,6 @@ export default function Celebraciones() {
           </div>
         </div>
 
-        {/* Servicios */}
         <div className="space-y-3">
           <p className="font-semibold text-lg">¿Qué ofrecemos?</p>
           <div className="space-y-2">
@@ -150,88 +130,26 @@ export default function Celebraciones() {
           </div>
         </div>
 
-        {/* Formulario */}
         <div className="space-y-4">
           <p className="font-semibold text-lg">Consultanos</p>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              name="nombre"
-              placeholder="Tu nombre"
-              value={form.nombre}
-              onChange={handleChange}
-              className={inputClass}
-              required
-            />
-            <input
-              name="email"
-              type="email"
-              placeholder="Tu email"
-              value={form.email}
-              onChange={handleChange}
-              className={inputClass}
-              required
-            />
-            <input
-              name="telefono"
-              type="tel"
-              placeholder="Tu teléfono"
-              value={form.telefono}
-              onChange={handleChange}
-              className={inputClass}
-              required
-            />
-            <select
-              name="tipo"
-              value={form.tipo}
-              onChange={handleChange}
-              className={inputClass}
-              required
-            >
-              <option value="" disabled>
-                Tipo de celebración
-              </option>
+            <input name="nombre" placeholder="Tu nombre" value={form.nombre} onChange={handleChange} className={inputClass} required />
+            <input name="email" type="email" placeholder="Tu email" value={form.email} onChange={handleChange} className={inputClass} required />
+            <input name="telefono" type="tel" placeholder="Tu teléfono" value={form.telefono} onChange={handleChange} className={inputClass} required />
+            <select name="tipo" value={form.tipo} onChange={handleChange} className={inputClass} required>
+              <option value="" disabled>Tipo de celebración</option>
               {TIPOS_CELEBRACION.map(({ valor, label }) => (
-                <option key={valor} value={valor}>
-                  {label}
-                </option>
+                <option key={valor} value={valor}>{label}</option>
               ))}
             </select>
-            <input
-              name="fecha"
-              type="date"
-              value={form.fecha}
-              onChange={handleChange}
-              className={inputClass}
-              required
-            />
-            <input
-              name="personas"
-              type="number"
-              placeholder="Cantidad de personas"
-              value={form.personas}
-              onChange={handleChange}
-              min={1}
-              className={inputClass}
-              required
-            />
-            <textarea
-              name="mensaje"
-              placeholder="Contanos más sobre tu celebración (opcional)"
-              value={form.mensaje}
-              onChange={handleChange}
-              rows={3}
-              className={`${inputClass} resize-none`}
-            />
-            <button
-              type="submit"
-              disabled={cargando}
-              className="w-full bg-green-600 hover:bg-green-700 transition p-3 rounded-2xl text-white font-semibold disabled:opacity-50"
-            >
+            <input name="fecha" type="date" value={form.fecha} onChange={handleChange} className={inputClass} required />
+            <input name="personas" type="number" placeholder="Cantidad de personas" value={form.personas} onChange={handleChange} min={1} className={inputClass} required />
+            <textarea name="mensaje" placeholder="Contanos más sobre tu celebración (opcional)" value={form.mensaje} onChange={handleChange} rows={3} className={`${inputClass} resize-none`} />
+            <button type="submit" disabled={cargando} className="w-full bg-green-600 hover:bg-green-700 transition p-3 rounded-2xl text-white font-semibold disabled:opacity-50">
               {cargando ? "Enviando..." : "Consultar 🎉"}
             </button>
           </form>
         </div>
-
       </div>
     </div>
   );
