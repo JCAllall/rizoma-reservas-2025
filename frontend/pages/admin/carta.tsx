@@ -74,7 +74,6 @@ export default function AdminCartaPage() {
   return (
     <div className="min-h-screen bg-zinc-900 text-white px-6 py-10">
       <div className="max-w-5xl mx-auto space-y-6">
-
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Editar carta</h1>
           <button
@@ -136,8 +135,30 @@ export default function AdminCartaPage() {
                 </p>
                 <p className="text-sm text-zinc-400 capitalize">{item.categoria}</p>
                 <p className="font-medium text-right">${item.precio}</p>
-
                 <div className="flex gap-2 mt-2">
                   <button
                     onClick={() => {
-                      setModoEd
+                      setModoEdicion(item);
+                      setMostrarFormulario(true);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-1 bg-zinc-700 hover:bg-zinc-600 transition px-3 py-2 rounded-xl text-sm"
+                  >
+                    <Pencil size={16} /> Editar
+                  </button>
+                  <button
+                    onClick={() => eliminarItem(item._id)}
+                    disabled={eliminandoId === item._id}
+                    className="flex-1 flex items-center justify-center gap-1 bg-red-600 hover:bg-red-700 transition px-3 py-2 rounded-xl text-sm disabled:opacity-50"
+                  >
+                    <Trash2 size={16} />
+                    {eliminandoId === item._id ? "Eliminando..." : "Eliminar"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
