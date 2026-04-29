@@ -34,10 +34,14 @@ export default function Celebraciones() {
   const [cargando, setCargando] = useState(false);
 
   const handleChange = (
-    e: React.ChangeEvent
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
+
+  e: React.ChangeEvent
+
+    HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+
+  >
+
+) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
