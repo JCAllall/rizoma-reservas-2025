@@ -10,29 +10,37 @@ const { Server } = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:3000";
+const allowedOrigins = [
+  "https://rizoma-reservas-2025.vercel.app",
+  "https://rizoma-reservas-2025-9umfaiuds-juan-cruz-allalls-projects.vercel.app",
+  "http://localhost:3000",
+];
 
-const io = new Server(server, {
-  cors: { origin: CLIENT_URL },
-});
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.some((o) => origin.startsWith(o) || origin === o)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+};
 
-// 🔌 Conectar io con reservationController
+const io = new Server(server, { cors: corsOptions });
+
 const { setSocketIO } = require("./controllers/reservationController");
 setSocketIO(io);
 
-// Middleware
-app.use(cors({ origin: CLIENT_URL }));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.set("io", io);
 
-// Rutas
 const authRoutes = require("./routes/auth");
 const reservationRoutes = require("./routes/reservationRoutes");
 app.use("/api/auth", authRoutes);
 app.use("/api/reservas", reservationRoutes);
 app.use("/api/carta", require("./routes/carta"));
 
-// WebSocket handlers
 io.on("connection", (socket) => {
   console.log("🟢 Usuario conectado vía WebSocket:", socket.id);
   socket.on("disconnect", () => {
@@ -40,7 +48,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// Conexión a MongoDB
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
@@ -54,7 +61,6 @@ mongoose
     process.exit(1);
   });
 
-// Manejo de errores no capturados
 process.on("unhandledRejection", (err) => {
   console.error("❌ Unhandled Rejection:", err);
   process.exit(1);
