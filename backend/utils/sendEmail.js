@@ -1,23 +1,15 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendEmail = async ({ to, subject, text, html }) => {
-  const mailOptions = {
-    from: `"Rizoma Bar & Resto" <${process.env.EMAIL_USER}>`,
+  await resend.emails.send({
+    from: "Rizoma Bar & Resto <onboarding@resend.dev>",
     to,
     subject,
     text,
     html,
-  };
-
-  await transporter.sendMail(mailOptions);
+  });
 };
 
 module.exports = sendEmail;
