@@ -137,7 +137,7 @@ export default function AdminIndex() {
         {/* Navegación */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Link
-            href="/admin/reservas"
+            href="/admin"
             className="flex flex-col items-center gap-2 bg-zinc-800 hover:bg-zinc-700 transition p-6 rounded-2xl text-center"
           >
             <CalendarDays size={32} className="text-green-500" />
