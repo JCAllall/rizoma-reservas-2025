@@ -12,13 +12,16 @@ const server = http.createServer(app);
 
 const allowedOrigins = [
   "https://rizoma-reservas-2025.vercel.app",
-  "https://rizoma-reservas-2025-9umfaiuds-juan-cruz-allalls-projects.vercel.app",
   "http://localhost:3000",
 ];
 
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.some((o) => origin.startsWith(o) || origin === o)) {
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      /^https:\/\/rizoma-reservas-2025.*\.vercel\.app$/.test(origin)
+    ) {
       callback(null, true);
     } else {
       callback(new Error("Not allowed by CORS"));
