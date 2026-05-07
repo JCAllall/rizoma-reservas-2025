@@ -1,15 +1,21 @@
-const { Resend } = require("resend");
+const SibApiV3Sdk = require("sib-api-v3-sdk");
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const client = SibApiV3Sdk.ApiClient.instance;
+const apiKey = client.authentications["api-key"];
+apiKey.apiKey = process.env.BREVO_API_KEY;
 
 const sendEmail = async ({ to, subject, text, html }) => {
-  await resend.emails.send({
-    from: "Rizoma Bar & Resto <onboarding@resend.dev>",
-    to,
+  const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
+
+  const sendSmtpEmail = {
+    sender: { name: "Rizoma Bar & Resto", email: "allalijuancruz@gmail.com" },
+    to: [{ email: to }],
     subject,
-    text,
-    html,
-  });
+    textContent: text,
+    htmlContent: html,
+  };
+
+  await apiInstance.sendTransacEmail(sendSmtpEmail);
 };
 
 module.exports = sendEmail;
