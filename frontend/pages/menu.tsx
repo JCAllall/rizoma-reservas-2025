@@ -1,122 +1,193 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
+import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import toast from "react-hot-toast";
+import Head from "next/head";
+import Link from "next/link";
 
-type Categoria = "comida" | "bebida" | "postre" | "coctel" | "vino";
+const COMIDA = Array.from({ length: 5 }, (_, i) => ({
+  src: `/carta/comida-0${i + 1}.jpg`,
+  label: `Página ${i + 1}`,
+}));
 
-type Item = {
-  _id: string;
-  nombre: string;
-  descripcion: string;
-  precio: number;
-  imagenUrl?: string;
-  categoria: Categoria;
-  disponible: boolean;
-};
+const BEBIDAS = Array.from({ length: 8 }, (_, i) => ({
+  src: `/carta/bebidas-0${i + 1}.jpg`,
+  label: `Página ${i + 1}`,
+}));
 
-const CATEGORIAS: { valor: Categoria; label: string }[] = [
-  { valor: "comida", label: "Comidas" },
-  { valor: "bebida", label: "Bebidas" },
-  { valor: "postre", label: "Postres" },
-  { valor: "coctel", label: "Cócteles" },
-  { valor: "vino", label: "Vinos" },
-];
+type Tab = "comida" | "bebidas";
 
-const MAX_DESCRIPCION = 100;
+export default function Menu() {
+  const [tab, setTab] = useState<Tab>("comida");
+  const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
 
-export default function MenuPage() {
-  const [items, setItems] = useState<Item[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [descripcionExpandida, setDescripcionExpandida] = useState<string | null>(null);
+  const items = tab === "comida" ? COMIDA : BEBIDAS;
 
-  useEffect(() => {
-    const cargarMenu = async () => {
-      try {
-        const res = await axios.get<Item[]>(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/carta`
-        );
-        setItems(res.data);
-      } catch {
-        toast.error("Error al cargar el menú");
-      } finally {
-        setCargando(false);
-      }
-    };
-    cargarMenu();
-  }, []);
-
-  const mostrarDescripcion = (item: Item) => {
-    if (
-      item.descripcion.length <= MAX_DESCRIPCION ||
-      descripcionExpandida === item._id
-    ) {
-      return item.descripcion;
-    }
-    return item.descripcion.slice(0, MAX_DESCRIPCION) + "...";
+  const switchTab = (t: Tab) => {
+    if (t === tab) return;
+    setTab(t);
+    setIndex(0);
+    setDirection(0);
   };
 
-  const toggleDescripcion = (id: string) => {
-    setDescripcionExpandida((prev) => (prev === id ? null : id));
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
   };
 
-  const renderItems = (categoria: Categoria) => {
-    const filtrados = items.filter((item) => item.categoria === categoria);
-    if (filtrados.length === 0) return null;
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 40) go(diff > 0 ? 1 : -1);
+    touchStartX.current = null;
+  };
 
-    return filtrados.map((item) => (
-      <motion.div
-        key={item._id}
-        layout
-        className="bg-zinc-800 rounded-xl p-4 shadow space-y-2"
-      >
-        {item.imagenUrl && (
-          <img
-            src={item.imagenUrl}
-            alt={item.nombre}
-            className="w-full h-48 object-cover rounded-xl"
-          />
-        )}
-        <h3 className="text-lg font-bold text-white">{item.nombre}</h3>
-        <p className="text-sm text-zinc-400">{mostrarDescripcion(item)}</p>
-        {item.descripcion.length > MAX_DESCRIPCION && (
-          <button
-            onClick={() => toggleDescripcion(item._id)}
-            className="text-xs text-green-400 hover:text-green-300 transition"
-          >
-            {descripcionExpandida === item._id ? "Ver menos" : "Ver más"}
-          </button>
-        )}
-        <p className="text-right font-medium text-white">${item.precio}</p>
-      </motion.div>
-    ));
+  const go = useCallback(
+    (dir: 1 | -1) => {
+      setDirection(dir);
+      setIndex((prev) => (prev + dir + items.length) % items.length);
+    },
+    [items.length]
+  );
+
+  const goTo = (i: number) => {
+    setDirection(i > index ? 1 : -1);
+    setIndex(i);
+  };
+
+  const variants = {
+    enter: (d: number) => ({ x: d > 0 ? "60%" : "-60%", opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (d: number) => ({ x: d > 0 ? "-60%" : "60%", opacity: 0 }),
   };
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-white px-6 py-10">
-      <div className="max-w-5xl mx-auto space-y-10">
-        <h1 className="text-3xl font-bold text-center">Menú</h1>
+    <>
+      <Head>
+        <title>Carta — Rizoma Bar & Resto</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
 
-        {cargando ? (
-          <p className="text-zinc-400 text-center">Cargando menú...</p>
-        ) : (
-          CATEGORIAS.map(({ valor, label }) => {
-            const hayItems = items.some((i) => i.categoria === valor);
-            if (!hayItems) return null;
+      <div className="min-h-screen bg-[#0d0d0d] text-[#f0ebe0] flex flex-col">
+        {/* Header */}
+        <header className="flex items-center justify-between px-6 py-5 border-b border-white/10">
+          <Link
+            href="/"
+            className="text-sm tracking-widest uppercase text-[#c9b99a] hover:text-[#f0ebe0] transition-colors"
+          >
+            ← Volver
+          </Link>
+          <span
+            className="text-xl tracking-[0.3em] uppercase font-light"
+            style={{ fontFamily: "'Cormorant Garamond', serif" }}
+          >
+            Rizoma
+          </span>
+          <span className="text-sm text-[#c9b99a] tracking-widest uppercase">
+            Carta
+          </span>
+        </header>
 
-            return (
-              <section key={valor}>
-                <h2 className="text-2xl font-bold mb-4">{label}</h2>
-                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  <AnimatePresence>
-                    {renderItems(valor)}
-                  </AnimatePresence>
-                </div>
-              </section>
-            );
-          })
-        )}
+        {/* Tabs */}
+        <div className="flex justify-center gap-0 mt-8">
+          {(["comida", "bebidas"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => switchTab(t)}
+              className={`relative px-10 py-3 text-sm tracking-widest uppercase transition-all duration-300 ${
+                tab === t
+                  ? "text-[#f0ebe0]"
+                  : "text-[#666] hover:text-[#999]"
+              }`}
+            >
+              {t}
+              {tab === t && (
+                <motion.span
+                  layoutId="tab-underline"
+                  className="absolute bottom-0 left-0 right-0 h-px bg-[#c9b99a]"
+                />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Carrusel */}
+        <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+          {/* Contador */}
+          <p className="text-xs tracking-widest text-[#555] uppercase mb-6">
+            {index + 1} / {items.length}
+          </p>
+
+          {/* Imagen */}
+          <div
+            className="relative w-full max-w-lg overflow-hidden rounded-sm"
+            style={{ aspectRatio: "3/4" }}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+          >
+            <AnimatePresence custom={direction} mode="popLayout">
+              <motion.img
+                key={`${tab}-${index}`}
+                custom={direction}
+                variants={variants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+                src={items[index].src}
+                alt={`${tab} ${items[index].label}`}
+                className="absolute inset-0 w-full h-full object-cover"
+                draggable={false}
+              />
+            </AnimatePresence>
+
+            {/* Botones laterales */}
+            <button
+              onClick={() => go(-1)}
+              className="absolute left-0 top-0 bottom-0 w-1/4 flex items-center justify-start pl-4 group"
+              aria-label="Anterior"
+            >
+              <span className="text-white/0 group-hover:text-white/60 transition-all duration-200 text-2xl select-none">
+                ‹
+              </span>
+            </button>
+            <button
+              onClick={() => go(1)}
+              className="absolute right-0 top-0 bottom-0 w-1/4 flex items-center justify-end pr-4 group"
+              aria-label="Siguiente"
+            >
+              <span className="text-white/0 group-hover:text-white/60 transition-all duration-200 text-2xl select-none">
+                ›
+              </span>
+            </button>
+          </div>
+
+          {/* Dots */}
+          <div className="flex gap-2 mt-6">
+            {items.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goTo(i)}
+                aria-label={`Ir a página ${i + 1}`}
+                className="p-1"
+              >
+                <span
+                  className={`block rounded-full transition-all duration-300 ${
+                    i === index
+                      ? "bg-[#c9b99a] w-4 h-1"
+                      : "bg-[#333] w-1 h-1 hover:bg-[#666]"
+                  }`}
+                />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="text-center py-6 text-xs text-[#333] tracking-widest uppercase border-t border-white/5">
+          Rizoma Bar & Resto
+        </footer>
       </div>
-    </div>
+    </>
   );
 }
