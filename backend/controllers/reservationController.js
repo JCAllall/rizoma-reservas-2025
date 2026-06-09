@@ -3,13 +3,7 @@ const PDFDocument = require("pdfkit");
 const { verificarMesasDisponibles } = require("../utils/mesaLogic");
 const sendEmail = require("../utils/sendEmail");
 
-const LIMITES = {
-  HORARIO: 12,
-  DIARIO: {
-    Patio: 40,
-    Esquina: 46,
-  },
-};
+const HORARIOS_VALIDOS = ["20:00", "20:30", "21:00", "21:30"];
 
 let io;
 
@@ -39,6 +33,13 @@ const crearReserva = async (req, res) => {
       });
     }
 
+    // Validar horario
+    if (!HORARIOS_VALIDOS.includes(hora)) {
+      return res.status(400).json({
+        error: "Horario no válido. Los horarios disponibles son: 20:00, 20:30, 21:00 y 21:30.",
+      });
+    }
+
     const fechaReserva = new Date(`${fecha}T00:00:00`);
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -53,10 +54,11 @@ const crearReserva = async (req, res) => {
       });
     }
 
+    // Solo miércoles (3) a domingo (0)
     const diaSemana = fechaReserva.getDay();
-    if (![0, 2, 3, 4, 5, 6].includes(diaSemana)) {
+    if (![0, 3, 4, 5, 6].includes(diaSemana)) {
       return res.status(400).json({
-        error: "Solo se aceptan reservas de martes a domingo.",
+        error: "Solo se aceptan reservas de miércoles a domingo. Los lunes y martes estamos cerrados.",
       });
     }
 
@@ -72,34 +74,7 @@ const crearReserva = async (req, res) => {
         error:
           resultado.mensaje === "WhatsApp"
             ? "Para más de 8 personas contactanos por WhatsApp."
-            : "No hay disponibilidad de mesas para ese horario.",
-      });
-    }
-
-    const reservas = await Reserva.find({ fecha, sector, listaEspera: false });
-
-    const LIMITE_DIARIO = LIMITES.DIARIO[sector] ?? 46;
-
-    const totalPersonasDia = reservas.reduce(
-      (acc, r) => acc + (r.personas || 0),
-      0
-    );
-
-    if (totalPersonasDia + personasNum > LIMITE_DIARIO) {
-      return res.status(400).json({
-        error:
-          "Capacidad diaria del sector superada. ¿Querés unirte a la lista de espera?",
-      });
-    }
-
-    const personasEnHorario = reservas
-      .filter((r) => r.hora === hora)
-      .reduce((acc, r) => acc + (r.personas || 0), 0);
-
-    if (personasEnHorario + personasNum > LIMITES.HORARIO) {
-      return res.status(400).json({
-        error:
-          "Horario completo. Por favor elegí otro horario o unite a la lista de espera.",
+            : resultado.mensaje || "No hay disponibilidad de mesas para ese horario.",
       });
     }
 
@@ -115,8 +90,7 @@ const crearReserva = async (req, res) => {
 
     if (reservaDuplicada) {
       return res.status(400).json({
-        error:
-          "Ya existe una reserva con ese email para ese día, horario y sector.",
+        error: "Ya existe una reserva con ese email para ese día, horario y sector.",
       });
     }
 
@@ -143,7 +117,6 @@ const crearReserva = async (req, res) => {
       });
     }
 
-    // ✅ Sin await — el email se manda en segundo plano
     sendEmail({
       to: emailNormalizado,
       subject: "Confirmación de reserva en Rizoma",
@@ -184,15 +157,8 @@ const eliminarReserva = async (req, res) => {
   try {
     const { id } = req.params;
     const reserva = await Reserva.findByIdAndDelete(id);
-
-    if (!reserva) {
-      return res.status(404).json({ message: "Reserva no encontrada" });
-    }
-
-    if (io) {
-      io.emit("reservaEliminada", id);
-    }
-
+    if (!reserva) return res.status(404).json({ message: "Reserva no encontrada" });
+    if (io) io.emit("reservaEliminada", id);
     res.status(200).json({ message: "Reserva eliminada con éxito" });
   } catch (error) {
     console.error("Error al eliminar reserva:", error);
@@ -217,10 +183,7 @@ const obtenerReservasPorFecha = async (req, res) => {
   try {
     const { fecha } = req.query;
     if (!fecha) return res.status(400).json({ error: "Fecha requerida" });
-    const reservas = await Reserva.find({
-      fecha,
-      listaEspera: false,
-    }).sort({ sector: 1, hora: 1 });
+    const reservas = await Reserva.find({ fecha, listaEspera: false }).sort({ sector: 1, hora: 1 });
     res.json(reservas);
   } catch (error) {
     console.error("Error al obtener reservas por fecha:", error);
@@ -231,13 +194,9 @@ const obtenerReservasPorFecha = async (req, res) => {
 const getCapacidadPorSector = async (req, res) => {
   try {
     const { fecha, sector } = req.query;
-    if (!fecha || !sector)
-      return res.status(400).json({ error: "Fecha y sector requeridos." });
+    if (!fecha || !sector) return res.status(400).json({ error: "Fecha y sector requeridos." });
     const reservas = await Reserva.find({ fecha, sector, listaEspera: false });
-    const totalPersonas = reservas.reduce(
-      (acc, r) => acc + (r.personas || 0),
-      0
-    );
+    const totalPersonas = reservas.reduce((acc, r) => acc + (r.personas || 0), 0);
     res.json({ totalPersonas });
   } catch (error) {
     console.error("Error al obtener capacidad:", error);
@@ -283,13 +242,9 @@ const verificarDisponibilidadInteligente = async (req, res) => {
 const obtenerCapacidadHorariaYDiaria = async (req, res) => {
   try {
     const { fecha, sector } = req.query;
-    if (!fecha || !sector)
-      return res.status(400).json({ error: "Fecha y sector requeridos" });
+    if (!fecha || !sector) return res.status(400).json({ error: "Fecha y sector requeridos" });
     const reservas = await Reserva.find({ fecha, sector, listaEspera: false });
-    const totalPersonasDia = reservas.reduce(
-      (acc, r) => acc + (r.personas || 0),
-      0
-    );
+    const totalPersonasDia = reservas.reduce((acc, r) => acc + (r.personas || 0), 0);
     const personasPorHorario = {};
     reservas.forEach((r) => {
       if (!personasPorHorario[r.hora]) personasPorHorario[r.hora] = 0;
@@ -306,23 +261,15 @@ const exportarReservasPDF = async (req, res) => {
   try {
     const { fecha } = req.query;
     if (!fecha) return res.status(400).json({ error: "Fecha requerida" });
-    const reservas = await Reserva.find({
-      fecha,
-      listaEspera: false,
-    }).sort({ sector: 1, hora: 1 });
+    const reservas = await Reserva.find({ fecha, listaEspera: false }).sort({ sector: 1, hora: 1 });
     const doc = new PDFDocument();
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="reservas_${fecha}.pdf"`
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="reservas_${fecha}.pdf"`);
     doc.pipe(res);
     doc.fontSize(16).text(`Reservas del día ${fecha}`, { align: "center" });
     doc.moveDown();
     reservas.forEach((r, i) => {
-      doc.fontSize(12).text(
-        `${i + 1}. ${r.nombre} - ${r.email} - ${r.sector} - ${r.hora} hs - ${r.personas} personas`
-      );
+      doc.fontSize(12).text(`${i + 1}. ${r.nombre} - ${r.email} - ${r.sector} - ${r.hora} hs - ${r.personas} personas`);
     });
     doc.end();
   } catch (error) {
@@ -346,12 +293,8 @@ const obtenerListaEspera = async (req, res) => {
 const obtenerResumenPorRango = async (req, res) => {
   try {
     const { desde, hasta } = req.query;
-    if (!desde || !hasta)
-      return res.status(400).json({ error: "Parámetros 'desde' y 'hasta' requeridos" });
-    const reservas = await Reserva.find({
-      fecha: { $gte: desde, $lte: hasta },
-      listaEspera: false,
-    });
+    if (!desde || !hasta) return res.status(400).json({ error: "Parámetros 'desde' y 'hasta' requeridos" });
+    const reservas = await Reserva.find({ fecha: { $gte: desde, $lte: hasta }, listaEspera: false });
     let totalPersonas = 0, porSector = {}, porHorario = {};
     reservas.forEach((r) => {
       const p = r.personas || 0;

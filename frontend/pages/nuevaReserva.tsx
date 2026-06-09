@@ -26,6 +26,18 @@ const FORM_INICIAL: ReservaForm = {
   comentario: "",
 };
 
+const HORARIOS = ["20:00", "20:30", "21:00", "21:30"];
+
+// Devuelve la fecha mínima seleccionable (hoy)
+const fechaMinima = () => new Date().toISOString().split("T")[0];
+
+// Verifica si una fecha es lunes (1) o martes (2) — días cerrados
+const esDiaCerrado = (fechaStr: string) => {
+  if (!fechaStr) return false;
+  const dia = new Date(`${fechaStr}T00:00:00`).getDay();
+  return dia === 1 || dia === 2;
+};
+
 export default function NuevaReserva() {
   const [form, setForm] = useState<ReservaForm>(FORM_INICIAL);
   const [reservaExitosa, setReservaExitosa] = useState(false);
@@ -34,11 +46,27 @@ export default function NuevaReserva() {
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+
+    if (name === "fecha") {
+      // Si elige lunes o martes, limpiar la fecha y avisar
+      if (esDiaCerrado(value)) {
+        toast.error("Los lunes y martes estamos cerrados. Por favor elegí otro día.");
+        setForm((prev) => ({ ...prev, fecha: "" }));
+        return;
+      }
+    }
+
     setForm((prev) => ({ ...prev, [name]: name === "personas" ? parseInt(value) : value }));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (esDiaCerrado(form.fecha)) {
+      toast.error("Los lunes y martes estamos cerrados.");
+      return;
+    }
+
     setCargando(true);
     try {
       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/reservas`, form);
@@ -80,7 +108,13 @@ export default function NuevaReserva() {
     <div className="min-h-screen bg-zinc-900 text-white flex items-center justify-center px-4">
       <AnimatePresence mode="wait">
         {reservaExitosa && datosConfirmados ? (
-          <motion.div key="confirmacion" className="text-center p-6 rounded-2xl bg-zinc-800 shadow-lg max-w-md w-full space-y-4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+          <motion.div
+            key="confirmacion"
+            className="text-center p-6 rounded-2xl bg-zinc-800 shadow-lg max-w-md w-full space-y-4"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+          >
             <CheckCircle size={64} className="text-green-500 mx-auto" />
             <h2 className="text-2xl font-bold">¡Reserva Confirmada!</h2>
             <p className="text-sm text-zinc-300">Te esperamos en Rizoma 🍷</p>
@@ -95,26 +129,97 @@ export default function NuevaReserva() {
               <p><strong>Comentario:</strong> {datosConfirmados.comentario || "—"}</p>
             </div>
             <div className="space-y-2">
-              <a href={generarLinkGoogleCalendar()} target="_blank" rel="noopener noreferrer" className="block bg-blue-600 hover:bg-blue-700 transition px-4 py-2 rounded-xl text-white font-semibold">Agregar a Google Calendar</a>
-              <a href={generarLinkWhatsApp()} target="_blank" rel="noopener noreferrer" className="block bg-green-600 hover:bg-green-700 transition px-4 py-2 rounded-xl text-white font-semibold">Compartir por WhatsApp</a>
+              <a href={generarLinkGoogleCalendar()} target="_blank" rel="noopener noreferrer"
+                className="block bg-blue-600 hover:bg-blue-700 transition px-4 py-2 rounded-xl text-white font-semibold">
+                Agregar a Google Calendar
+              </a>
+              <a href={generarLinkWhatsApp()} target="_blank" rel="noopener noreferrer"
+                className="block bg-green-600 hover:bg-green-700 transition px-4 py-2 rounded-xl text-white font-semibold">
+                Compartir por WhatsApp
+              </a>
             </div>
-            <button onClick={() => { setReservaExitosa(false); setDatosConfirmados(null); setForm(FORM_INICIAL); }} className="mt-2 bg-zinc-600 hover:bg-zinc-500 transition px-4 py-2 rounded-xl text-white font-semibold w-full">Hacer otra reserva</button>
+            <button
+              onClick={() => { setReservaExitosa(false); setDatosConfirmados(null); setForm(FORM_INICIAL); }}
+              className="mt-2 bg-zinc-600 hover:bg-zinc-500 transition px-4 py-2 rounded-xl text-white font-semibold w-full"
+            >
+              Hacer otra reserva
+            </button>
           </motion.div>
         ) : (
-          <motion.form key="formulario" onSubmit={handleSubmit} className="bg-zinc-800 p-6 rounded-2xl shadow-lg max-w-md w-full space-y-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <motion.form
+            key="formulario"
+            onSubmit={handleSubmit}
+            className="bg-zinc-800 p-6 rounded-2xl shadow-lg max-w-md w-full space-y-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
             <h2 className="text-2xl font-semibold text-center">Nueva Reserva</h2>
-            <input name="nombre" placeholder="Nombre" onChange={handleChange} value={form.nombre} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="email" placeholder="Email" type="email" onChange={handleChange} value={form.email} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="telefono" placeholder="Teléfono" type="tel" onChange={handleChange} value={form.telefono} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="fecha" type="date" onChange={handleChange} value={form.fecha} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="hora" type="time" onChange={handleChange} value={form.hora} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="personas" type="number" min={1} max={8} value={form.personas} onChange={handleChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" />
-            <select name="sector" value={form.sector} onChange={handleChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500">
+
+            <input name="nombre" placeholder="Nombre" onChange={handleChange} value={form.nombre}
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
+
+            <input name="email" placeholder="Email" type="email" onChange={handleChange} value={form.email}
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
+
+            <input name="telefono" placeholder="Teléfono" type="tel" onChange={handleChange} value={form.telefono}
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
+
+            {/* Fecha — solo miércoles a domingo */}
+            <div>
+              <input
+                name="fecha"
+                type="date"
+                onChange={handleChange}
+                value={form.fecha}
+                min={fechaMinima()}
+                className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500"
+                required
+              />
+              <p className="text-xs text-zinc-400 mt-1 pl-1">Abrimos miércoles a domingo</p>
+            </div>
+
+            {/* Horarios fijos como botones */}
+            <div>
+              <p className="text-sm text-zinc-400 mb-2 pl-1">Elegí un horario</p>
+              <div className="grid grid-cols-4 gap-2">
+                {HORARIOS.map((h) => (
+                  <button
+                    key={h}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, hora: h }))}
+                    className={`py-2 rounded-xl text-sm font-medium transition ${
+                      form.hora === h
+                        ? "bg-green-600 text-white"
+                        : "bg-zinc-700 text-zinc-300 hover:bg-zinc-600"
+                    }`}
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
+              {/* Campo hidden para validación del formulario */}
+              <input type="hidden" name="hora" value={form.hora} required />
+            </div>
+
+            <input name="personas" type="number" min={1} max={8} value={form.personas} onChange={handleChange}
+              placeholder="Cantidad de personas"
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" />
+
+            <select name="sector" value={form.sector} onChange={handleChange}
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500">
               <option value="Patio">Patio</option>
               <option value="Esquina">Esquina</option>
             </select>
-            <textarea name="comentario" placeholder="Comentario o nota (opcional)" onChange={handleChange} value={form.comentario} rows={3} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500 resize-none" />
-            <button type="submit" disabled={cargando} className="w-full bg-green-600 hover:bg-green-700 transition p-3 rounded-xl text-white font-semibold disabled:opacity-50">{cargando ? "Enviando..." : "Reservar"}</button>
+
+            <textarea name="comentario" placeholder="Comentario o nota (opcional)" onChange={handleChange}
+              value={form.comentario} rows={3}
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+
+            <button type="submit" disabled={cargando || !form.hora}
+              className="w-full bg-green-600 hover:bg-green-700 transition p-3 rounded-xl text-white font-semibold disabled:opacity-50">
+              {cargando ? "Enviando..." : "Reservar"}
+            </button>
           </motion.form>
         )}
       </AnimatePresence>
