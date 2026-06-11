@@ -2,121 +2,81 @@ const Reserva = require("../models/reserva");
 const PDFDocument = require("pdfkit");
 const { verificarMesasDisponibles } = require("../utils/mesaLogic");
 const sendEmail = require("../utils/sendEmail");
-
+const SectorEstado = require("../models/sectorEstado");
+ 
 const HORARIOS_VALIDOS = ["20:00", "20:30", "21:00", "21:30"];
-
+ 
 let io;
-
+ 
 function setSocketIO(ioInstance) {
   io = ioInstance;
 }
-
+ 
 const crearReserva = async (req, res) => {
   try {
     const { nombre, email, telefono, fecha, hora, sector, personas, comentario } = req.body;
-
+ 
     if (!nombre || !email || !telefono || !fecha || !hora || !sector || !personas) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
-
+ 
     const personasNum = Number(personas);
-
+ 
     if (!Number.isInteger(personasNum) || personasNum < 1) {
-      return res.status(400).json({
-        error: "La cantidad de personas debe ser un número entero mayor a 0.",
-      });
+      return res.status(400).json({ error: "La cantidad de personas debe ser un número entero mayor a 0." });
     }
-
+ 
     if (personasNum > 8) {
-      return res.status(400).json({
-        error: "Para más de 8 personas contactanos por WhatsApp.",
-      });
+      return res.status(400).json({ error: "Para más de 8 personas contactanos por WhatsApp." });
     }
-
-    // Validar horario
+ 
     if (!HORARIOS_VALIDOS.includes(hora)) {
-      return res.status(400).json({
-        error: "Horario no válido. Los horarios disponibles son: 20:00, 20:30, 21:00 y 21:30.",
-      });
+      return res.status(400).json({ error: "Horario no válido. Los horarios disponibles son: 20:00, 20:30, 21:00 y 21:30." });
     }
-
+ 
     const fechaReserva = new Date(`${fecha}T00:00:00`);
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-
+ 
     if (isNaN(fechaReserva.getTime())) {
       return res.status(400).json({ error: "La fecha ingresada no es válida." });
     }
-
+ 
     if (fechaReserva < hoy) {
-      return res.status(400).json({
-        error: "No se pueden hacer reservas para fechas pasadas.",
-      });
+      return res.status(400).json({ error: "No se pueden hacer reservas para fechas pasadas." });
     }
-
-    // Solo miércoles (3) a domingo (0)
+ 
     const diaSemana = fechaReserva.getDay();
     if (![0, 3, 4, 5, 6].includes(diaSemana)) {
-      return res.status(400).json({
-        error: "Solo se aceptan reservas de miércoles a domingo. Los lunes y martes estamos cerrados.",
-      });
+      return res.status(400).json({ error: "Solo se aceptan reservas de miércoles a domingo. Los lunes y martes estamos cerrados." });
     }
-
-    const resultado = await verificarMesasDisponibles({
-      fecha,
-      sector,
-      personas: personasNum,
-      hora,
-    });
-
+ 
+    const resultado = await verificarMesasDisponibles({ fecha, sector, personas: personasNum, hora });
+ 
     if (!resultado.disponible) {
       return res.status(400).json({
-        error:
-          resultado.mensaje === "WhatsApp"
-            ? "Para más de 8 personas contactanos por WhatsApp."
-            : resultado.mensaje || "No hay disponibilidad de mesas para ese horario.",
+        error: resultado.mensaje === "WhatsApp"
+          ? "Para más de 8 personas contactanos por WhatsApp."
+          : resultado.mensaje || "No hay disponibilidad de mesas para ese horario.",
       });
     }
-
+ 
     const emailNormalizado = email.trim().toLowerCase();
-
-    const reservaDuplicada = await Reserva.findOne({
-      fecha,
-      hora,
-      sector,
-      email: emailNormalizado,
-      listaEspera: false,
-    });
-
+ 
+    const reservaDuplicada = await Reserva.findOne({ fecha, hora, sector, email: emailNormalizado, listaEspera: false });
+ 
     if (reservaDuplicada) {
-      return res.status(400).json({
-        error: "Ya existe una reserva con ese email para ese día, horario y sector.",
-      });
+      return res.status(400).json({ error: "Ya existe una reserva con ese email para ese día, horario y sector." });
     }
-
-    const nuevaReserva = new Reserva({
-      nombre,
-      email: emailNormalizado,
-      telefono,
-      fecha,
-      hora,
-      sector,
-      personas: personasNum,
-      comentario,
-      listaEspera: false,
-    });
-
+ 
+    const nuevaReserva = new Reserva({ nombre, email: emailNormalizado, telefono, fecha, hora, sector, personas: personasNum, comentario, listaEspera: false });
+ 
     await nuevaReserva.save();
-
+ 
     if (io) {
-      io.emit("reservaCreada", {
-        nombre: nuevaReserva.nombre,
-        hora: nuevaReserva.hora,
-        fecha: nuevaReserva.fecha,
-        sector: nuevaReserva.sector,
-      });
+      io.emit("reservaCreada", { nombre: nuevaReserva.nombre, hora: nuevaReserva.hora, fecha: nuevaReserva.fecha, sector: nuevaReserva.sector });
     }
-
+ 
     sendEmail({
       to: emailNormalizado,
       subject: "Confirmación de reserva en Rizoma",
@@ -142,17 +102,14 @@ const crearReserva = async (req, res) => {
     }).catch(emailError => {
       console.error("Error al enviar email de confirmación:", emailError.message);
     });
-
-    return res.status(201).json({
-      mensaje: "Reserva guardada correctamente",
-      reserva: nuevaReserva,
-    });
+ 
+    return res.status(201).json({ mensaje: "Reserva guardada correctamente", reserva: nuevaReserva });
   } catch (error) {
     console.error("Error al guardar reserva:", error);
     return res.status(500).json({ error: "Error del servidor" });
   }
 };
-
+ 
 const eliminarReserva = async (req, res) => {
   try {
     const { id } = req.params;
@@ -165,7 +122,7 @@ const eliminarReserva = async (req, res) => {
     res.status(500).json({ message: "Error del servidor" });
   }
 };
-
+ 
 const obtenerHorariosOcupados = async (req, res) => {
   try {
     const { fecha } = req.query;
@@ -178,7 +135,7 @@ const obtenerHorariosOcupados = async (req, res) => {
     res.status(500).json({ error: "Error del servidor" });
   }
 };
-
+ 
 const obtenerReservasPorFecha = async (req, res) => {
   try {
     const { fecha } = req.query;
@@ -190,7 +147,7 @@ const obtenerReservasPorFecha = async (req, res) => {
     res.status(500).json({ error: "Error del servidor" });
   }
 };
-
+ 
 const getCapacidadPorSector = async (req, res) => {
   try {
     const { fecha, sector } = req.query;
@@ -203,20 +160,14 @@ const getCapacidadPorSector = async (req, res) => {
     res.status(500).json({ error: "Error al consultar la capacidad" });
   }
 };
-
+ 
 const guardarEnListaEspera = async (req, res) => {
   try {
     const { nombre, email, fecha, sector } = req.body;
     if (!nombre || !email || !fecha || !sector) {
       return res.status(400).json({ error: "Faltan campos requeridos." });
     }
-    const nuevaEntrada = new Reserva({
-      nombre,
-      email: email.trim().toLowerCase(),
-      fecha,
-      sector,
-      listaEspera: true,
-    });
+    const nuevaEntrada = new Reserva({ nombre, email: email.trim().toLowerCase(), fecha, sector, listaEspera: true });
     await nuevaEntrada.save();
     res.status(201).json({ mensaje: "Agregado a la lista de espera." });
   } catch (error) {
@@ -224,7 +175,7 @@ const guardarEnListaEspera = async (req, res) => {
     res.status(500).json({ error: "Error del servidor." });
   }
 };
-
+ 
 const verificarDisponibilidadInteligente = async (req, res) => {
   try {
     const { fecha, sector, personas, hora } = req.query;
@@ -238,7 +189,7 @@ const verificarDisponibilidadInteligente = async (req, res) => {
     res.status(500).json({ error: "Error del servidor" });
   }
 };
-
+ 
 const obtenerCapacidadHorariaYDiaria = async (req, res) => {
   try {
     const { fecha, sector } = req.query;
@@ -256,7 +207,7 @@ const obtenerCapacidadHorariaYDiaria = async (req, res) => {
     res.status(500).json({ error: "Error del servidor" });
   }
 };
-
+ 
 const exportarReservasPDF = async (req, res) => {
   try {
     const { fecha } = req.query;
@@ -277,7 +228,7 @@ const exportarReservasPDF = async (req, res) => {
     res.status(500).json({ error: "Error al generar PDF" });
   }
 };
-
+ 
 const obtenerListaEspera = async (req, res) => {
   try {
     const { fecha } = req.query;
@@ -289,7 +240,7 @@ const obtenerListaEspera = async (req, res) => {
     res.status(500).json({ error: "Error del servidor" });
   }
 };
-
+ 
 const obtenerResumenPorRango = async (req, res) => {
   try {
     const { desde, hasta } = req.query;
@@ -308,7 +259,7 @@ const obtenerResumenPorRango = async (req, res) => {
     res.status(500).json({ error: "Error del servidor" });
   }
 };
-
+ 
 const obtenerTodasLasReservas = async (req, res) => {
   try {
     const reservas = await Reserva.find();
@@ -318,7 +269,48 @@ const obtenerTodasLasReservas = async (req, res) => {
     res.status(500).json({ error: "Error al obtener las reservas" });
   }
 };
-
+ 
+// ── Estado de sectores ──────────────────────────────────
+const obtenerEstadoSectores = async (req, res) => {
+  try {
+    const sectores = ["Patio", "Esquina"];
+    const estados = await Promise.all(
+      sectores.map((sector) =>
+        SectorEstado.findOneAndUpdate(
+          { sector },
+          { $setOnInsert: { sector, abierto: true, mensaje: "" } },
+          { upsert: true, new: true }
+        )
+      )
+    );
+    res.json(estados);
+  } catch (error) {
+    console.error("Error al obtener estado de sectores:", error);
+    res.status(500).json({ error: "Error del servidor" });
+  }
+};
+ 
+const actualizarEstadoSector = async (req, res) => {
+  try {
+    const { sector, abierto } = req.body;
+    if (!sector || typeof abierto !== "boolean") {
+      return res.status(400).json({ error: "Sector y estado requeridos" });
+    }
+    const mensaje = abierto
+      ? ""
+      : `El sector ${sector} está completo. Podés venir desde las 22 hs y anotarte por orden de llegada.`;
+    const estado = await SectorEstado.findOneAndUpdate(
+      { sector },
+      { abierto, mensaje },
+      { upsert: true, new: true }
+    );
+    res.json(estado);
+  } catch (error) {
+    console.error("Error al actualizar estado de sector:", error);
+    res.status(500).json({ error: "Error del servidor" });
+  }
+};
+ 
 module.exports = {
   crearReserva,
   eliminarReserva,
