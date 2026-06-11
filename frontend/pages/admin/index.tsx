@@ -241,7 +241,7 @@ export default function AdminIndex() {
             <p className="text-xs text-zinc-400">Para reservas recibidas por WhatsApp u otro medio</p>
             <form onSubmit={handleGuardarManual} className="space-y-3">
               <input name="nombre" placeholder="Nombre" required value={form.nombre} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
-                <input name="email" placeholder="Email (opcional)" type="email" value={form.email} onChange={handleFormChange}
+                <input name="text" placeholder="Email (opcional)" type="email" value={form.email} onChange={handleFormChange}
                     className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />               
                 <input name="telefono" placeholder="Teléfono" type="tel" required value={form.telefono} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
               <input name="fecha" type="date" required value={form.fecha} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" />
