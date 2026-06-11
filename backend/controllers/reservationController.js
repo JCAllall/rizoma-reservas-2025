@@ -19,8 +19,6 @@ const crearReserva = async (req, res) => {
     if (!nombre || !telefono || !fecha || !hora || !sector || !personas) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
- 
-          const emailNormalizado = email ? email.trim().toLowerCase() : "";
 
     const personasNum = Number(personas);
  
@@ -63,7 +61,7 @@ const crearReserva = async (req, res) => {
       });
     }
  
-    const emailNormalizado = email.trim().toLowerCase();
+    const emailNormalizado = email ? email.trim().toLowerCase() : "";
  
     const reservaDuplicada = await Reserva.findOne({ fecha, hora, sector, email: emailNormalizado, listaEspera: false });
  
