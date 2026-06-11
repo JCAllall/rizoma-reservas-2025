@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { verificarToken } = require("../middleware/auth"); // ← lo agregamos
+const { verificarToken } = require("../middleware/auth");
 
 const {
   crearReserva,
@@ -15,6 +15,8 @@ const {
   obtenerResumenPorRango,
   obtenerReservasPorFecha,
   eliminarReserva,
+  obtenerEstadoSectores,
+  actualizarEstadoSector,
 } = require("../controllers/reservationController");
 
 // ── Rutas públicas ──────────────────────────────────────
@@ -22,10 +24,12 @@ router.get("/horarios-ocupados", obtenerHorariosOcupados);
 router.get("/capacidad", getCapacidadPorSector);
 router.get("/disponibilidad", verificarDisponibilidadInteligente);
 router.get("/capacidad-horaria", obtenerCapacidadHorariaYDiaria);
+router.get("/estado-sectores", obtenerEstadoSectores);
 router.post("/", crearReserva);
 router.post("/lista-espera", guardarEnListaEspera);
 
 // ── Rutas protegidas (solo admin) ───────────────────────
+router.post("/estado-sectores", verificarToken, actualizarEstadoSector);
 router.get("/todas", verificarToken, obtenerTodasLasReservas);
 router.get("/lista-espera", verificarToken, obtenerListaEspera);
 router.get("/exportar-pdf", verificarToken, exportarReservasPDF);

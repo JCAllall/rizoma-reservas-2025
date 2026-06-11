@@ -333,4 +333,6 @@ module.exports = {
   obtenerListaEspera,
   obtenerResumenPorRango,
   obtenerReservasPorFecha,
+  obtenerEstadoSectores,
+  actualizarEstadoSector,
 };

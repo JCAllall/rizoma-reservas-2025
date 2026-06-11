@@ -1,29 +1,22 @@
-import { useState, ChangeEvent, FormEvent } from "react";
+import { useState, useEffect, ChangeEvent, FormEvent } from "react";
 import axios, { AxiosError } from "axios";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, AlertTriangle } from "lucide-react";
 
 interface ReservaForm {
-  nombre: string;
-  email: string;
-  telefono: string;
-  fecha: string;
-  hora: string;
-  personas: number;
-  sector: "Patio" | "Esquina";
-  comentario: string;
+  nombre: string; email: string; telefono: string; fecha: string;
+  hora: string; personas: number; sector: "Patio" | "Esquina"; comentario: string;
 }
+interface SectorEstado { sector: string; abierto: boolean; mensaje: string; }
 
-const FORM_INICIAL: ReservaForm = {
-  nombre: "",
-  email: "",
-  telefono: "",
-  fecha: "",
-  hora: "",
-  personas: 1,
-  sector: "Patio",
-  comentario: "",
+const FORM_INICIAL: ReservaForm = { nombre: "", email: "", telefono: "", fecha: "", hora: "", personas: 1, sector: "Patio", comentario: "" };
+const HORARIOS = ["20:00", "20:30", "21:00", "21:30"];
+const fechaMinima = () => new Date().toISOString().split("T")[0];
+const esDiaCerrado = (fechaStr: string) => {
+  if (!fechaStr) return false;
+  const dia = new Date(`${fechaStr}T00:00:00`).getDay();
+  return dia === 1 || dia === 2;
 };
 
 export default function NuevaReserva() {
@@ -31,30 +24,46 @@ export default function NuevaReserva() {
   const [reservaExitosa, setReservaExitosa] = useState(false);
   const [datosConfirmados, setDatosConfirmados] = useState<ReservaForm | null>(null);
   const [cargando, setCargando] = useState(false);
+  const [estadoSectores, setEstadoSectores] = useState<SectorEstado[]>([]);
+
+  useEffect(() => {
+    axios.get<SectorEstado[]>(`${process.env.NEXT_PUBLIC_API_URL}/api/reservas/estado-sectores`)
+      .then((res) => setEstadoSectores(res.data))
+      .catch(() => {});
+  }, []);
+
+  const sectorElegido = estadoSectores.find((e) => e.sector === form.sector);
+  const sectorAlternativo = form.sector === "Patio" ? "Esquina" : "Patio";
+  const estadoAlternativo = estadoSectores.find((e) => e.sector === sectorAlternativo);
+  const sectorCerrado = sectorElegido ? !sectorElegido.abierto : false;
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === "fecha" && esDiaCerrado(value)) {
+      toast.error("Los lunes y martes estamos cerrados. Por favor elegí otro día.");
+      setForm((prev) => ({ ...prev, fecha: "" }));
+      return;
+    }
     setForm((prev) => ({ ...prev, [name]: name === "personas" ? parseInt(value) : value }));
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (esDiaCerrado(form.fecha)) { toast.error("Los lunes y martes estamos cerrados."); return; }
+    if (sectorCerrado) { toast.error(`El sector ${form.sector} está cerrado para reservas.`); return; }
     setCargando(true);
     try {
       const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/reservas`, form);
       if (res.data.mensaje === "Agregado a la lista de espera.") {
         toast.success("Te sumamos a la lista de espera 🙌");
       } else {
-        setDatosConfirmados(form);
-        setReservaExitosa(true);
+        setDatosConfirmados(form); setReservaExitosa(true);
         toast.success(res.data.mensaje || "Reserva creada con éxito");
       }
     } catch (err) {
       const error = err as AxiosError<{ error: string }>;
       toast.error(error.response?.data?.error || "Ocurrió un error al crear la reserva.");
-    } finally {
-      setCargando(false);
-    }
+    } finally { setCargando(false); }
   };
 
   const generarLinkGoogleCalendar = () => {
@@ -64,10 +73,8 @@ export default function NuevaReserva() {
     const horaFinNum = (hh + 1) % 24;
     const horaInicio = `${String(hh).padStart(2, "0")}${String(mm).padStart(2, "0")}00`;
     const horaFin = `${String(horaFinNum).padStart(2, "0")}${String(mm).padStart(2, "0")}00`;
-    const start = `${fecha}T${horaInicio}`;
-    const end = `${fecha}T${horaFin}`;
     const detalles = `Reserva en Rizoma para ${datosConfirmados.personas} persona(s) en el sector ${datosConfirmados.sector}`;
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Reserva+Rizoma&dates=${start}/${end}&details=${encodeURIComponent(detalles)}`;
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=Reserva+Rizoma&dates=${fecha}T${horaInicio}/${fecha}T${horaFin}&details=${encodeURIComponent(detalles)}`;
   };
 
   const generarLinkWhatsApp = () => {
@@ -77,10 +84,11 @@ export default function NuevaReserva() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-white flex items-center justify-center px-4">
+    <div className="min-h-screen bg-zinc-900 text-white flex items-center justify-center px-4 py-10">
       <AnimatePresence mode="wait">
         {reservaExitosa && datosConfirmados ? (
-          <motion.div key="confirmacion" className="text-center p-6 rounded-2xl bg-zinc-800 shadow-lg max-w-md w-full space-y-4" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+          <motion.div key="confirmacion" className="text-center p-6 rounded-2xl bg-zinc-800 shadow-lg max-w-md w-full space-y-4"
+            initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
             <CheckCircle size={64} className="text-green-500 mx-auto" />
             <h2 className="text-2xl font-bold">¡Reserva Confirmada!</h2>
             <p className="text-sm text-zinc-300">Te esperamos en Rizoma 🍷</p>
@@ -98,23 +106,87 @@ export default function NuevaReserva() {
               <a href={generarLinkGoogleCalendar()} target="_blank" rel="noopener noreferrer" className="block bg-blue-600 hover:bg-blue-700 transition px-4 py-2 rounded-xl text-white font-semibold">Agregar a Google Calendar</a>
               <a href={generarLinkWhatsApp()} target="_blank" rel="noopener noreferrer" className="block bg-green-600 hover:bg-green-700 transition px-4 py-2 rounded-xl text-white font-semibold">Compartir por WhatsApp</a>
             </div>
-            <button onClick={() => { setReservaExitosa(false); setDatosConfirmados(null); setForm(FORM_INICIAL); }} className="mt-2 bg-zinc-600 hover:bg-zinc-500 transition px-4 py-2 rounded-xl text-white font-semibold w-full">Hacer otra reserva</button>
+            <button onClick={() => { setReservaExitosa(false); setDatosConfirmados(null); setForm(FORM_INICIAL); }}
+              className="mt-2 bg-zinc-600 hover:bg-zinc-500 transition px-4 py-2 rounded-xl text-white font-semibold w-full">
+              Hacer otra reserva
+            </button>
           </motion.div>
         ) : (
-          <motion.form key="formulario" onSubmit={handleSubmit} className="bg-zinc-800 p-6 rounded-2xl shadow-lg max-w-md w-full space-y-4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <motion.form key="formulario" onSubmit={handleSubmit}
+            className="bg-zinc-800 p-6 rounded-2xl shadow-lg max-w-md w-full space-y-4"
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
             <h2 className="text-2xl font-semibold text-center">Nueva Reserva</h2>
-            <input name="nombre" placeholder="Nombre" onChange={handleChange} value={form.nombre} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="email" placeholder="Email" type="email" onChange={handleChange} value={form.email} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="telefono" placeholder="Teléfono" type="tel" onChange={handleChange} value={form.telefono} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="fecha" type="date" onChange={handleChange} value={form.fecha} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="hora" type="time" onChange={handleChange} value={form.hora} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" required />
-            <input name="personas" type="number" min={1} max={8} value={form.personas} onChange={handleChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" />
-            <select name="sector" value={form.sector} onChange={handleChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500">
-              <option value="Patio">Patio</option>
-              <option value="Esquina">Esquina</option>
-            </select>
-            <textarea name="comentario" placeholder="Comentario o nota (opcional)" onChange={handleChange} value={form.comentario} rows={3} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500 resize-none" />
-            <button type="submit" disabled={cargando} className="w-full bg-green-600 hover:bg-green-700 transition p-3 rounded-xl text-white font-semibold disabled:opacity-50">{cargando ? "Enviando..." : "Reservar"}</button>
+
+            <input name="nombre" placeholder="Nombre" onChange={handleChange} value={form.nombre} required
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
+            <input name="email" placeholder="Email" type="email" onChange={handleChange} value={form.email} required
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
+            <input name="telefono" placeholder="Teléfono" type="tel" onChange={handleChange} value={form.telefono} required
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
+
+            <div>
+              <input name="fecha" type="date" onChange={handleChange} value={form.fecha} min={fechaMinima()} required
+                className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" />
+              <p className="text-xs text-zinc-400 mt-1 pl-1">Abrimos miércoles a domingo</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-zinc-400 mb-2 pl-1">Elegí un horario</p>
+              <div className="grid grid-cols-4 gap-2">
+                {HORARIOS.map((h) => (
+                  <button key={h} type="button" onClick={() => setForm((prev) => ({ ...prev, hora: h }))}
+                    className={`py-2 rounded-xl text-sm font-medium transition ${form.hora === h ? "bg-green-600 text-white" : "bg-zinc-700 text-zinc-300 hover:bg-zinc-600"}`}>
+                    {h}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <input name="personas" type="number" min={1} max={8} value={form.personas} onChange={handleChange}
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" />
+
+            {/* Selector de sector */}
+            <div>
+              <select name="sector" value={form.sector} onChange={handleChange}
+                className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500">
+                <option value="Patio">Patio</option>
+                <option value="Esquina">Esquina</option>
+              </select>
+
+              {/* Aviso sector cerrado */}
+              {sectorCerrado && (
+                <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }}
+                  className="mt-3 bg-red-900/60 border border-red-500 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-red-300 font-semibold">
+                    <AlertTriangle size={18} /> El sector {form.sector} está completo
+                  </div>
+                  <p className="text-sm text-red-200">
+                    Podés venir desde las 22 hs y anotarte por orden de llegada.
+                  </p>
+                  {estadoAlternativo?.abierto && (
+                    <div className="mt-2 bg-green-900/50 border border-green-500 rounded-lg p-3">
+                      <p className="text-sm text-green-300 font-medium">
+                        ✅ ¡Hay lugar en el sector {sectorAlternativo}!
+                      </p>
+                      <button type="button"
+                        onClick={() => setForm((prev) => ({ ...prev, sector: sectorAlternativo as "Patio" | "Esquina" }))}
+                        className="mt-2 text-xs bg-green-600 hover:bg-green-700 transition px-3 py-1.5 rounded-lg text-white font-semibold">
+                        Reservar en {sectorAlternativo}
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </div>
+
+            <textarea name="comentario" placeholder="Comentario o nota (opcional)" onChange={handleChange}
+              value={form.comentario} rows={3}
+              className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+
+            <button type="submit" disabled={cargando || !form.hora || sectorCerrado}
+              className="w-full bg-green-600 hover:bg-green-700 transition p-3 rounded-xl text-white font-semibold disabled:opacity-50">
+              {cargando ? "Enviando..." : "Reservar"}
+            </button>
           </motion.form>
         )}
       </AnimatePresence>
