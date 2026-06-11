@@ -20,6 +20,8 @@ const crearReserva = async (req, res) => {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
     }
  
+          const emailNormalizado = email ? email.trim().toLowerCase() : "";
+
     const personasNum = Number(personas);
  
     if (!Number.isInteger(personasNum) || personasNum < 1) {
