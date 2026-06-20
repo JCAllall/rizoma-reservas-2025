@@ -14,7 +14,7 @@ function setSocketIO(ioInstance) {
 
 const crearReserva = async (req, res) => {
   try {
-    const { nombre, email, telefono, fecha, hora, sector, personas, comentario } = req.body;
+    const { nombre, email, telefono, fecha, hora, sector, personas, comentario, esAdmin } = req.body;
 
     if (!nombre || !telefono || !fecha || !hora || !sector || !personas) {
       return res.status(400).json({ error: "Faltan campos obligatorios" });
@@ -51,7 +51,7 @@ const crearReserva = async (req, res) => {
       return res.status(400).json({ error: "Solo se aceptan reservas de miércoles a domingo. Los lunes y martes estamos cerrados." });
     }
 
-    const resultado = await verificarMesasDisponibles({ fecha, sector, personas: personasNum, hora });
+    const resultado = await verificarMesasDisponibles({ fecha, sector, personas: personasNum, hora, esAdmin: !!esAdmin });
 
     if (!resultado.disponible) {
       return res.status(400).json({

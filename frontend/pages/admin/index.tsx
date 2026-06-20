@@ -111,7 +111,7 @@ export default function AdminIndex() {
     if (!token) return router.push("/login");
     setGuardando(true);
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/reservas`, form, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/reservas`, { ...form, esAdmin: true }, { headers: { Authorization: `Bearer ${token}` } });
       toast.success("Reserva agregada correctamente");
       setModalAbierto(false); setForm(FORM_INICIAL);
       cargarDatos(token);
@@ -241,7 +241,8 @@ export default function AdminIndex() {
             <p className="text-xs text-zinc-400">Para reservas recibidas por WhatsApp u otro medio</p>
             <form onSubmit={handleGuardarManual} className="space-y-3">
               <input name="nombre" placeholder="Nombre" required value={form.nombre} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
-              <input name="email" placeholder="Email (opcional)" type="text" value={form.email} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500"/>              <input name="telefono" placeholder="Teléfono" type="tel" required value={form.telefono} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
+              <input name="email" placeholder="Email (opcional)" type="text" value={form.email} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
+              <input name="telefono" placeholder="Teléfono" type="tel" required value={form.telefono} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white placeholder-zinc-400 outline-none focus:ring-2 focus:ring-green-500" />
               <input name="fecha" type="date" required value={form.fecha} onChange={handleFormChange} className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" />
               <div>
                 <p className="text-sm text-zinc-400 mb-2">Horario</p>
