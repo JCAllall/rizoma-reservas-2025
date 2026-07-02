@@ -102,7 +102,7 @@ export default function AdminIndex() {
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: name === "personas" ? parseInt(value) : value }));
+    setForm((prev) => ({ ...prev, [name]: name === "personas" ? (parseInt(value) || 1) : value }));
   };
 
   const handleGuardarManual = async (e: React.FormEvent) => {
