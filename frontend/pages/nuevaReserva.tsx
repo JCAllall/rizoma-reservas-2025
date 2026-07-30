@@ -16,7 +16,7 @@ const fechaMinima = () => new Date().toISOString().split("T")[0];
 const esDiaCerrado = (fechaStr: string) => {
   if (!fechaStr) return false;
   const dia = new Date(`${fechaStr}T00:00:00`).getDay();
-  return dia === 1 || dia === 2;
+  return dia === 0 || dia === 1 || dia === 2; // domingo, lunes, martes
 };
 
 export default function NuevaReserva() {
@@ -49,7 +49,7 @@ export default function NuevaReserva() {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (esDiaCerrado(form.fecha)) { toast.error("Los lunes y martes estamos cerrados."); return; }
+    if (esDiaCerrado(form.fecha)) { toast.error("Solo abrimos de miércoles a sábado."); return; }
     if (sectorCerrado) { toast.error(`El sector ${form.sector} está cerrado para reservas.`); return; }
     setCargando(true);
     try {
@@ -127,7 +127,7 @@ export default function NuevaReserva() {
             <div>
               <input name="fecha" type="date" onChange={handleChange} value={form.fecha} min={fechaMinima()} required
                 className="w-full p-3 rounded-xl bg-zinc-700 text-white outline-none focus:ring-2 focus:ring-green-500" />
-              <p className="text-xs text-zinc-400 mt-1 pl-1">Abrimos miércoles a domingo</p>
+              <p className="text-xs text-zinc-400 mt-1 pl-1">Abrimos miércoles a sábado</p>
             </div>
 
             <div>

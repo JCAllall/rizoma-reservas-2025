@@ -47,7 +47,7 @@ const crearReserva = async (req, res) => {
     }
 
     const diaSemana = fechaReserva.getDay();
-    if (![0, 3, 4, 5, 6].includes(diaSemana)) {
+    if (![3, 4, 5, 6].includes(diaSemana)) {
       return res.status(400).json({ error: "Solo se aceptan reservas de miércoles a domingo. Los lunes y martes estamos cerrados." });
     }
 
